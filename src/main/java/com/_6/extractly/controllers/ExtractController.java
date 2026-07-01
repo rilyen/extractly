@@ -1,0 +1,168 @@
+package com._6.extractly.controllers;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.bind.annotation.PostMapping;
+
+import tools.jackson.databind.json.JsonMapper;
+
+
+@Controller
+public class ExtractController {
+    
+    // API key for Gemini
+    @Value("${gemini.api.key}")
+    private String geminiApiKey;
+
+    // use to send HTTP request to Gemini's REST API
+    private final RestTemplate restTemplate = new RestTemplate();    
+
+    // use to convert into a valid JSON string
+    private final JsonMapper jsonMapper = JsonMapper.builder().build();
+
+    // redirect to extract.html
+    @GetMapping("/")
+    public String index() {
+        return "extract";
+    }
+
+    // Handles POST /extract
+    // JS calls this with a recorded meeting transcript
+    // Sends the transcript to Gemini with extraction instructions
+    // Returns Gemini's raw JSON response to the frontend to parse
+    // @ResponseBody: write the return value directly as the HTTP response body
+    @PostMapping("/extract")
+    @ResponseBody
+    public ResponseEntity<String> extract(@RequestBody Map<String, String> body) {
+
+        // Pull transcript 
+        String transcript = body.get("transcript");
+
+        // Reject empty/missing transcripts
+        if (transcript == null || transcript.isBlank()) {
+            return ResponseEntity.badRequest().body("{\"error\":\"Transcript is empty.\"}");
+        }
+
+        // Instructions given to Gemini with transcript text appended at the end
+        String prompt = """
+                You are a data extraction assistant.
+                Read the transcript below and extract values for each of the following fields.
+                Return ONLY a valid JSON object — no markdown, no explanation, no code fences.
+                If a field is not mentioned in the transcript, set its value to null.
+                For boolean fields (checkboxes / yes-no), use true or false.
+                For date fields, use YYYY-MM-DD format if possible.
+
+                Special field rules:
+                - "integration": extract the company or deal name mentioned in the transcript as a plain string (e.g. "Towels Direct"). Do not invent a value.
+                - "stage": must be exactly one of these options or null: "Internal Testing", "Choice 2", "Choice 3", "Won"
+                - "projectClass": must be exactly one of these options or null: "Small (one week)", "Medium (multi week)", "Large (over X weeks)"
+
+                Fields to extract:
+                - integration
+                - assignedDesigner
+                - dealName
+                - resources
+                - projectID
+                - designLink
+                - companyWebsite
+                - companyAbout
+                - productPurpose
+                - projectCostModifier
+                - stage
+                - designDocuments
+                - reviewProjectDocs
+                - draftRoadmap
+                - customerFeedback
+                - updateRoadmap
+                - createUpdateUserstories
+                - internalReview
+                - submittedForApproval
+                - allocatedBudget
+                - usedHours
+                - projectClass
+                - productionNotes
+                - customerConcerns
+                - onTrackIATs
+                - onTrackEmailsVideos
+                - flagProblem
+                - devStartDate
+                - designDueDate
+                - designCompletionDate
+                - pullClosingDate
+                - projectedDeliveryDate
+                - negotiatedDeliveryDueDate
+                - projectedCompletionDate
+                - pulledSOWEstimatedTime
+                - devEstimatedTime
+                - qcTurnaroundTime
+                - fullProjectIAT
+                - qcTestingCompleted
+                - demoVideoRecorded
+                - editPackageVideo
+                - cleanUpDatabase
+
+                Transcript:
+                """ + transcript;
+
+        try {
+            // Build Gemini request payload as a plain java object graph that mirrors the JSON shape Gemini's API expects:
+            //  { "contents": [ { "parts": [ { "text": "..." } ] } ], 
+            //    "generationConfig": { "temperature": 0.1 } }
+            //
+            // We build it this way so jsonMapper handles translating this structure into valid JSON text for us
+            // (no matter what characters end up inside "prompt")
+            //
+            // Low temperature is more deterministic, since we want consistent output
+            // responseMimeType "application/json" forces Gemini into strict JSON mode
+            Map<String, Object> requestPayload = Map.of(
+                "contents", List.of(
+                    Map.of("parts", List.of(
+                        Map.of("text", prompt)
+                    ))
+                ),
+                "generationConfig", Map.of(
+                    "temperature", 0.1,
+                    "responseMimeType", "application/json"
+                )
+            );
+
+            // Serialize object graph into valid JSON string to send as HTTP request body
+            String requestBody = jsonMapper.writeValueAsString(requestPayload);
+
+            // Tell Gemini outgoing request body is JSON
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            // Gemini REST endpoint with our API key, using gemini 2.5 flash model
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
+        
+            // Send POST request to Gemini with JSON body + header
+            // response is String
+            ResponseEntity<String> geminiResponse = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                new HttpEntity<>(requestBody, headers),
+                String.class
+            );
+
+            // send Gemini's raw JSON response back to frontend JS (to be parsed into fields)
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(geminiResponse.getBody());
+        
+        } catch (Exception e) {
+            // Return error message for failures
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("{\"error\": \"" + e.getMessage() + "\"}");
+        }
+        
+    }
+}

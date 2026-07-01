@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extractly</title>
+</head>
+<body>
+    <h1>Extractly - Transcript Extractor for Aether Automations Statements of Work</h1>
+
+    <p>
+        <label for="transcript">Paste Transcript:</label>
+        <textarea id="transcript" placeholder="Paste your meeting transcript here..."></textarea>
+    </p>
+
+    <p>
+        <!-- for testing that json is extracting properly, will make combine into one button later -->
+        <button onclick="extract()">Extract JSON</button>
+        <button id="copyBtn" onclick="copyJSON()">Copy</button>
+        <span id="status"></span>
+    </p>
+
+    <pre id="jsonOutput"></pre>
+
+    <script src="/js/extract.js"></script>
+</body>
+</html>
