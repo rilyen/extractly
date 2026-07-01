@@ -18,7 +18,6 @@ async function extract() {
     // disable buttons until result is ready
     setStatus('Calling Gemini...');
     document.getElementById('jsonOutput').textContent = '';
-    document.getElementById('copyBtn').disabled = true;
 
     try {
         // POST transcript to backend /extract endpoint as JSON
@@ -51,7 +50,6 @@ async function extract() {
         // display the parsed result with 2-space indentation
         // enable action buttons
         document.getElementById('jsonOutput').textContent = JSON.stringify(lastJSON, null, 2);
-        document.getElementById('copyBtn').disabled = false;
         setStatus('Done');
 
     } catch (err) {
