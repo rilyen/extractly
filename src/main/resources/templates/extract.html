@@ -1,28 +1,257 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Extractly</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+    <script src="/js/extract.js" defer></script>
 </head>
-<body>
-    <h1>Extractly - Transcript Extractor for Aether Automations Statements of Work</h1>
+<body class="bg-light">
+<div class="container my-4">
 
-    <p>
-        <label for="transcript">Paste Transcript:</label>
-        <textarea id="transcript" placeholder="Paste your meeting transcript here..."></textarea>
-    </p>
+    <h1 class="h3 mb-1">Extractly</h1>
+    <p class="text-muted">Transcript Extractor for Aether Automations Statements of Work</p>
 
-    <p>
-        <!-- for testing that json is extracting properly, will make combine into one button later -->
-        <button onclick="extract()">Extract JSON</button>
-        <span id="status"></span>
-    </p>
+    <!-- Transcript input box -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <label for="transcript" class="form-label fw-semibold">Paste Transcript</label>
+            <textarea id="transcript" class="form-control mb-3" rows="6" placeholder="Paste your meeting transcript here..."></textarea>
+            <button onclick="extract()" class="btn btn-primary">Extract JSON</button>
+            <span id="status" class="ms-2 text-muted"></span>
+        </div>
+    </div>
 
     <button id="logoutBtn" onclick="logout()">Logout</button>
 
-    <pre id="jsonOutput"></pre>
+  
+    <!-- The form we are filling -->
+     <!-- Sync section() -->
+    <form>
+        <p></p>
+        <h2 class="h5 border-bottom pb-2 mb-3">Project</h2>
+        <h3 class="h5 border-bottom pb-2 mb-3">Sync</h3>
+        <h3 class="h5 border-bottom pb-2 mb-3"> Section</h3>
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label for="integration" class="form-label">Integration</label>
+                <select id="integration" class="form-select">
+                    <option value="">-Select-</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label for="assignedDesigner" class="form-label">Assigned Designer</label>
+                <input type="text" id="assignedDesigner" class="form-control">
+            </div>
 
-    <script src="/js/extract.js"></script>
+            <div class="col-md-6">
+                <label for="dealName" class="form-label">Deal Name</label>
+                <input type="text" id="dealName" class="form-control">
+            </div>
+            <div class="col-md-6">
+                <label for="resources" class="form-label">Resources to be used to design (and links)</label>
+                <textarea id="resources" class="form-control" rows="2"></textarea>
+            </div>
+
+            <div class="col-md-6">
+                <label for="projectID" class="form-label">Project ID</label>
+                <input type="text" id="projectID" class="form-control">
+            </div>
+            <div class="col-md-6">
+                <label for="designLink" class="form-label">Design Link</label>
+                <input type="text" id="designLink" class="form-control">
+            </div>
+
+            <div class="col-md-6">
+                <label for="companyWebsite" class="form-label">Company Website</label>
+                <input type="text" id="companyWebsite" class="form-control">
+            </div>
+            <div class="col-md-6">
+                <label for="companyAbout" class="form-label">What is the company about (for context)?</label>
+                <textarea id="companyAbout" class="form-control" rows="2"></textarea>
+            </div>
+
+            <div class="col-md-6">
+                <label for="productPurpose" class="form-label">What is the purpose of this product?</label>
+                <textarea id="productPurpose" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-6">
+                <label for="projectCostModifier" class="form-label">Project Cost Modifier</label>
+                <input type="text" id="projectCostModifier" class="form-control" placeholder="#######.##">
+            </div>
+        </div>
+
+        <!-- Nonsync -->
+        <h3 class="h5 border-bottom pb-2 mb-3">Non Sync</h3>
+        <h3 class="h5 border-bottom pb-2 mb-3">Section</h3>
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label for="stage" class="form-label">Stage</label>
+                <select id="stage" class="form-select">
+                    <option value="">-Select-</option>
+                    <option value="Internal Testing">Internal Testing</option>
+                    <option value="Choice 2">Choice 2</option>
+                    <option value="Choice 3">Choice 3</option>
+                    <option value="Won">Won</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check mt-4">
+                    <input type="checkbox" id="reviewProjectDocs" class="form-check-input">
+                    <label for="reviewProjectDocs" class="form-check-label">Review Project Docs and Requirements</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="draftRoadmap" class="form-check-input">
+                    <label for="draftRoadmap" class="form-check-label">Draft Roadmap</label>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label for="designDocuments" class="form-label">Design Documents to Produce (and links)</label>
+                <textarea id="designDocuments" class="form-control" rows="2"></textarea>
+            </div>
+        </div>
+
+        <!--  PostProduction Section -->
+        <h2 class="h5 border-bottom pb-2 mb-3">Post Production</h2>
+        <div class="mb-4">
+            <div class="form-check">
+                <input type="checkbox" id="customerFeedback" class="form-check-input">
+                <label for="customerFeedback" class="form-check-label">Customer Feedback (meeting)</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" id="updateRoadmap" class="form-check-input">
+                <label for="updateRoadmap" class="form-check-label">Update Roadmap</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" id="createUpdateUserstories" class="form-check-input">
+                <label for="createUpdateUserstories" class="form-check-label">Create / Update Userstories</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" id="internalReview" class="form-check-input">
+                <label for="internalReview" class="form-check-label">Internal Review (scope time &amp; budget)</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" id="submittedForApproval" class="form-check-input">
+                <label for="submittedForApproval" class="form-check-label">Submitted to Customer for Approval</label>
+            </div>
+        </div>
+
+        <!--  Time Fields Section(NOTE: i messed up the ordering ill fix it) -->
+        <h2 class="h5 border-bottom pb-2 mb-3">Time Fields</h2>
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <label for="allocatedBudget" class="form-label">Allocated Budget</label>
+                <input type="text" id="allocatedBudget" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label for="usedHours" class="form-label">Used Hours</label>
+                <input type="text" id="usedHours" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label for="projectClass" class="form-label">Project Class</label>
+                <select id="projectClass" class="form-select">
+                    <option value="">-Select-</option>
+                    <option value="Small (one week)">Small (one week)</option>
+                    <option value="Medium (multi week)">Medium (multi week)</option>
+                    <option value="Large (over X weeks)">Large (over X weeks)</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check">
+                    <input type="checkbox" id="onTrackIATs" class="form-check-input">
+                    <label for="onTrackIATs" class="form-check-label">On track with IATs?</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="onTrackEmailsVideos" class="form-check-input">
+                    <label for="onTrackEmailsVideos" class="form-check-label">On track with Emails &amp; Videos?</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="flagProblem" class="form-check-input">
+                    <label for="flagProblem" class="form-check-label">FLAG as Problem!</label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label for="qcTurnaroundTime" class="form-label">QC Turnaround Time</label>
+                <input type="text" id="qcTurnaroundTime" class="form-control" placeholder="#######.##">
+            </div>
+            <div class="col-md-4">
+                <label for="pulledSOWEstimatedTime" class="form-label">PULLED SOW Estimated Time</label>
+                <input type="text" id="pulledSOWEstimatedTime" class="form-control" placeholder="#######.##">
+            </div>
+            <div class="col-md-4">
+                <label for="devEstimatedTime" class="form-label">Dev Estimated Time</label>
+                <input type="text" id="devEstimatedTime" class="form-control" placeholder="#######.##">
+            </div>
+            <div class="col-md-4">
+                <label for="devStartDate" class="form-label">Dev Start Date</label>
+                <input type="text" id="devStartDate" class="form-control" placeholder="dd-MMM-yyyy">
+            </div>
+            <div class="col-md-4">
+                <label for="designDueDate" class="form-label">Design Due Date</label>
+                <input type="text" id="designDueDate" class="form-control" placeholder="dd-MMM-yyyy">
+            </div>
+            <div class="col-md-4">
+                <label for="designCompletionDate" class="form-label">Design Completion Date</label>
+                <input type="text" id="designCompletionDate" class="form-control" placeholder="dd-MMM-yyyy">
+            </div>
+            <div class="col-md-4">
+                <label for="pullClosingDate" class="form-label">PULL Closing Date</label>
+                <input type="text" id="pullClosingDate" class="form-control" placeholder="dd-MMM-yyyy">
+            </div>
+            <div class="col-md-4">
+                <label for="projectedDeliveryDate" class="form-label">Projected Delivery Date</label>
+                <input type="text" id="projectedDeliveryDate" class="form-control" placeholder="dd-MMM-yyyy">
+            </div>
+            <div class="col-md-4">
+                <label for="negotiatedDeliveryDueDate" class="form-label">Negotiated Delivery Due Date</label>
+                <input type="text" id="negotiatedDeliveryDueDate" class="form-control" placeholder="dd-MMM-yyyy">
+            </div>
+            <div class="col-md-4">
+                <label for="projectedCompletionDate" class="form-label">Projected Completion Date</label>
+                <input type="text" id="projectedCompletionDate" class="form-control" placeholder="dd-MMM-yyyy">
+            </div>
+            <div class="col-12">
+                <div class="form-check">
+                    <input type="checkbox" id="fullProjectIAT" class="form-check-input">
+                    <label for="fullProjectIAT" class="form-check-label">Full Project IAT</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="qcTestingCompleted" class="form-check-input">
+                    <label for="qcTestingCompleted" class="form-check-label">QC Testing Completed</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="demoVideoRecorded" class="form-check-input">
+                    <label for="demoVideoRecorded" class="form-check-label">Demo Video Recorded</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="editPackageVideo" class="form-check-input">
+                    <label for="editPackageVideo" class="form-check-label">Edit &amp; Package Video</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="cleanUpDatabase" class="form-check-input">
+                    <label for="cleanUpDatabase" class="form-check-label">Clean up database &amp; prep for delivery</label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label for="productionNotes" class="form-label">Production Notes</label>
+                <textarea id="productionNotes" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-md-4">
+                <label for="customerConcerns" class="form-label">Customer Concerns</label>
+                <textarea id="customerConcerns" class="form-control" rows="2"></textarea>
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-success mb-4">Submit</button>
+    </form>
+
+    <!-- I displayed the raw JSON output for easy review(I will remove this later) -->
+    <h2 class="h6">Raw extracted JSON(My review)</h2>
+    <pre id="jsonOutput" class="bg-white border rounded p-3 small"></pre>
+
+</div>
+
 </body>
 </html>
