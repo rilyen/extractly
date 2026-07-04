@@ -1,7 +1,6 @@
 package com._6.extractly.controllers;
 
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -57,12 +56,14 @@ public class AuthController {
     @PostMapping("/login")
     @ResponseBody
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpSession session) {
-        
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new NoSuchElementException("User not found."));
 
-        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        var userOpt = userRepository.findByEmail(request.getEmail());
+
+        if (userOpt.isEmpty() || !passwordEncoder.matches(request.getPassword(), userOpt.get().getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid email or password."));
         }
+
+        User user = userOpt.get();
 
         session.setAttribute("email", user.getEmail());
         session.setAttribute("role", user.getRole().name());

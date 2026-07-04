@@ -34,7 +34,7 @@ public class ExtractController {
     // redirect or show page based on user role
     @GetMapping("/")
     public String index(HttpSession session) {
-    var role = session.getAttribute("role");
+    String role = (String) session.getAttribute("role");
 
     if (role == null) {
         return "redirect:/login.html";
