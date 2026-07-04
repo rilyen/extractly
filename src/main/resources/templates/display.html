@@ -10,16 +10,23 @@
 
 <body>
     <header>
-        <div class="justify-content-left">
+        <div class="mb-10">
             <h1>Extractly</h1>
             <h1>Project</h1>
             <h1>Section</h1>
         </div>
     </header>
-    <main class="mt-5">
-        <div class="justify-content-left">
-            <form th:action="@{}" th:object="${}" method="post">
-
+    <main class="mb-8">
+        <div class="mb-3">
+            <form>
+                <div class="mb-3">
+                    <label>Integration</label>
+                    <input type="text" id="integration" name="integration" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label>Aassigned Designer</label>
+                    <input type="text" id=" assignedDesigner" name=" assignedDesigner" class="form-control">
+                </div>
             </form>
         </div>
     </main>
