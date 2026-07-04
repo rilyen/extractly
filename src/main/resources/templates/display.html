@@ -1,0 +1,354 @@
+
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Extractly</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <header>
+        <div class="mx-3 my-5 ">
+            <h1 class="display-4 fw-bold  text-uppercase text-center">Extractly</h1>
+        </div>
+    </header>
+    <main class="mx-3">
+        <div class="mb-3">
+            <form>
+                <h3>Project</h3>
+                <hr>
+                <!--Sync section-->
+                <h3>Sync</h3>
+                <hr>
+                </hr>
+                <h3>Section</h3>
+                <hr>
+                </hr>
+                <div class="row mb-3">
+                    <div class=" col-md-6">
+                        <label from="integration">Integration</label>
+                        <input type="text" id="integration" name="integration" class="form-control w-25">
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row">
+                            <label for="assignedDesigner" class="col-sm-4 col-form-label">Assigned Designer</label>
+                            <div class="col-sm-8">
+                                <input type="text" id="assignedDesigner" name="assignedDesigner" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="row">
+                            <label for="dealName" class="col-sm-4 col-form-label">Deal Name</label>
+                            <div class="col-sm-8">
+                                <input type="text" id="dealName" name="dealName" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row">
+                            <label for="resources" class="col-sm-4 col-form-label">Resources to be used (and
+                                links)</label>
+                            <div class="col-sm-8">
+                                <textarea id="resources" name="resources" class="form-control"
+                                    style="field-sizing: content; min-height: 100px;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class=" col-md-6">
+                        <div class="row">
+                            <label for="projectID" class="col-sm-4 col-form-label">ProjectID</label>
+                            <div class="col-sm-8">
+                                <input type="text" id="projectID" name="projectID" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="row">
+                            <label for="companyWebsite" class="col-sm-4 col-form-label">Company website</label>
+                            <div class="col-sm-8">
+                                <input type="text" id="companyWebsite" name="companyWebsite" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row">
+                            <label for="designLink" class="col-sm-4 col-form-label">Design Link</label>
+                            <div class="col-sm-8">
+                                <input type="text" id="designLink" name="designLink" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class=" col-md-6">
+                        <div class="row">
+                            <label for="companyAbout" class="col-sm-4 col-form-label">What is the company about (for
+                                context)?</label>
+                            <div class="col-sm-8">
+                                <textarea id="companyAbout" name="companyAbout" class="form-control"
+                                    style="field-sizing: content; min-height: 100px;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class=" col-md-6">
+                        <div class="row">
+                            <label for="productPurpose" class="col-sm-4 col-form-label">What is the purpose of this
+                                product?</label>
+                            <div class="col-sm-8">
+                                <textarea id="productPurpose" name="productPurpose" class="form-control"
+                                    style="field-sizing: content; min-height: 100px;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class=" col-md-6">
+                        <div class="row">
+                            <label for="projectCostModifier" class="col-sm-4 col-form-label">Project Cost
+                                Modifier</label>
+                            <div class="col-sm-8">
+                                <input type="number" id="projectCostModifier" name="projectCostModifier" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!--Non Sync section-->
+                <h3>Non Sync</h3>
+                <hr>
+                <h3>Section</h3>
+                <hr>
+                <div class="row mb-3">
+                    <div class=" col-md-6">
+                        <label from="stage">Stage</label>
+                        <input type="text" id="stage" name="stage" class="form-control w-25">
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row">
+                            <div class="form-check">
+                                <input type="checkbox" id="reviewProjectDocs" name="reviewProjectDocs">
+                                <label for="reviewProjectDocs">Review Project Docs and Requirements</label>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" id="draftRoadmap" name="draftRoadmap">
+                                <label for="draftRoadmap">Draft Roadmap</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        </div>
+        <div class=" col-md-6">
+            <div class="row">
+                <label for="producePurpose" class="col-sm-4 col-form-label">Design Documents to produce (and
+                    links)</label>
+                <div class="col-sm-8">
+                    <textarea id="producePurpose" name="producePurpose" class="form-control"
+                        style="field-sizing: content; min-height: 100px;"></textarea>
+                </div>
+            </div>
+        </div>
+        <!--Production section-->
+        <h3>Production</h3>
+        <hr>
+        <h3>Post Production</h3>
+        <hr>
+        <div class="col-md-6">
+            <div class="row">
+                <div class="form-check">
+                    <input type="checkbox" id="customerFeedbacks" name="customerFeedback">
+                    <label for="customerFeedback">Customer Feedback (meeting)</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="updateRoadmap" name="updateRoadmap">
+                    <label for="updateRoadmap">Update Roadmap</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="createUpdateUserstories" name="createUpdateUserstories">
+                    <label for="createUpdateUserstories">Create/ Update Userstories</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" id="internalReview" name="internalReview">
+                    <label for="internalReview">Internal Review (scope time & budget)</label>
+                </div>
+                <div class="form-check mb-3">
+                    <input type="checkbox" id="submittedForApproval" name="submittedForApproval">
+                    <label for="submittedForApproval">Submitted to Customer for Approval</label>
+                </div>
+            </div>
+        </div>
+        <h3>Time Fields</h3>
+        <hr>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="row">
+                    <label for="allocatedBudget" class="col-sm-4 col-form-label">Allocated Budget</label>
+                    <div class="col-sm-8">
+                        <textarea id="allocatedBudget" name="allocatedBudget" class="form-control"
+                            style="field-sizing: content; min-height: 100px;"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="row">
+                    <div class="form-check">
+                        <input type="checkbox" id="onTrackIATs" name="onTrackIATs">
+                        <label for="onTrackIATs">On track with IATs?</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="onTrackEmailsVideos" name="onTrackEmailsVideos">
+                        <label for="onTrackEmailsVideos">On track with Emails & Videos?</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="flagProblem" name="flagProblem">
+                        <label for="flagProblem">FLAG as Problem!</label>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="row my-3">
+                    <label for="usedHours" class="col-sm-4 col-form-label">Used Hours</label>
+                    <div class="col-sm-8">
+                        <textarea id="usedHours" name="usedHours" class="form-control"
+                            style="field-sizing: content; min-height: 100px;"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="row">
+                    <label for="devStartDate" class="col-sm-4 col-form-label ">Dev Start Date</label>
+                    <div class="col-sm-8">
+                        <input type="text" id="devStartDate" name="devStartDate" class="form-control">
+                    </div>
+                </div>
+                <div class="row my-3">
+                    <label for="pulledSOWEstimatedTime" class="col-sm-4 col-form-label">PULLED SOW Estimated
+                        Time</label>
+                    <div class="col-sm-8">
+                        <input type="number" id="pulledSOWEstimatedTime" name="pulledSOWEstimatedTime"
+                            class="form-control">
+                    </div>
+                </div>
+                <div class="row my-3">
+                    <label for="devEstimatedTime" class="col-sm-4 col-form-label">Dev Estimated Time</label>
+                    <div class="col-sm-8">
+                        <input type="number" id="devEstimatedTime" name="devEstimatedTime" class="form-control">
+                    </div>
+                </div>
+                <div class="row my-3">
+                    <label for="projectedCompletionDate" class="col-sm-4 col-form-label">Project Completion Date</label>
+                    <div class="col-sm-8">
+                        <input type="number" id="projectedCompletionDate" name="projectedCompletionDate"
+                            class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="row my-3">
+                    <label for="qcTurnaroundTime" class="col-sm-4 col-form-label">QC Turnaround Time</label>
+                    <div class="col-sm-8">
+                        <input type="number" id="qcTurnaroundTime" name="qcTurnaroundTime" class="form-control">
+                    </div>
+                </div>
+                <div class="row my-3">
+                    <label for="projectedDeliveryDate" class="col-sm-4 col-form-label">Project Delivery Date</label>
+                    <div class="col-sm-8">
+                        <input type="text" id="projectedDeliveryDate" name="projectedDeliveryDate" class="form-control">
+                    </div>
+                </div>
+                <div class="row my-3">
+                    <label for="negotiatedDeliveryDueDate" class="col-sm-4 col-form-label">Negotiation Delivery Due
+                        Date</label>
+                    <div class="col-sm-8">
+                        <input type="text" id="negotiatedDeliveryDueDate" name="negotiatedDeliveryDueDate"
+                            class="form-control">
+                    </div>
+                </div>
+                <div class="row my-3">
+                    <label for="projectClass" class="col-sm-4 col-form-label">Project Class</label>
+                    <div class="col-sm-8">
+                        <input type="text" id="projectClass" name="projectClass" class="form-control">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+                <div class="row my-3">
+                    <label for="productionNotes" class="col-sm-4 col-form-label">Production Notes</label>
+                    <div class="col-sm-8">
+                        <textarea id="productionNotes" name="productionNotes" class="form-control"
+                            style="field-sizing: content; min-height: 100px;"></textarea>
+                    </div>
+                </div>
+                <div class="row my-3">
+                    <label for="customerConcerns" class="col-sm-4 col-form-label">Customer Concerns</label>
+                    <div class="col-sm-8">
+                        <textarea id="customerConcerns" name="customerConcerns" class="form-control"
+                            style="field-sizing: content; min-height: 100px;"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="row">
+                    <div class="form-check">
+                        <input type="checkbox" id="fullProjectIAT" name="fullProjectIAT">
+                        <label for="fullProjectIAT">Full Project IAT</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="oqcTestingCompleted" name="qcTestingCompleted">
+                        <label for="qcTestingCompleted">QC Testing</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="demoVideoRecorded" name="demoVideoRecorded">
+                        <label for="demoVideoRecorded">Demo Video Recorded</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="editPackageVideo" name="editPackageVideo">
+                        <label for="editPackageVideo">Edit & Package Video</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="cleanUpDatabase" name="cleanUpDatabase">
+                        <label for="cleanUpDatabase">Clean up database & prep for delivery</label>
+                    </div>
+                </div>
+            </div>
+             <div class="col-md-6">
+                <div class="row my-3">
+                    <label for="pullClosingDate" class="col-sm-4 col-form-label">PULL Closing Date</label>
+                    <div class="col-sm-8">
+                        <input type="text" id="pullClosingDate" name="pullClosingDate" class="form-control">
+                    </div>
+                </div>
+                <div class="row my-3">
+                    <label for="designDueDate" class="col-sm-4 col-form-label">Design Due Date</label>
+                    <div class="col-sm-8">
+                        <input type="text" id="designDueDate" name="designDueDate" class="form-control">
+                    </div>
+                </div>
+                <div class="row my-3">
+                    <label for="designCompletionDate" class="col-sm-4 col-form-label">Design Completion Date</label>
+                    <div class="col-sm-8">
+                        <input type="text" id="designCompletionDate" name="designCompletionDate" class="form-control">
+                    </div>
+                </div>
+             </div>
+             <hr>
+             <div class="mb-3 text-center">
+                <button type="submit" class="btn btn-success">Submit</button>
+             </div>
+        </form>
+        </div>
+    </main>
+</body>
+
+</html>
