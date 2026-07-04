@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.RestTemplate;
+
+import jakarta.servlet.http.HttpSession;
+
 import org.springframework.web.bind.annotation.PostMapping;
 
 import tools.jackson.databind.json.JsonMapper;
@@ -28,11 +31,17 @@ public class ExtractController {
     // use to convert into a valid JSON string
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
-    // redirect to extract.html
+    // redirect or show page based on user role
     @GetMapping("/")
-    public String index() {
-        return "extract";
+    public String index(HttpSession session) {
+    var role = session.getAttribute("role");
+
+    if (role == null) {
+        return "redirect:/login.html";
     }
+
+    return "ADMIN".equals(role) ? "extract" : "extract-view-only";
+}
 
     // Handles POST /extract
     // JS calls this with a recorded meeting transcript
