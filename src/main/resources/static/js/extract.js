@@ -28,7 +28,7 @@ async function extract() {
     }
 
     setStatus('Calling Gemini...');
-    document.getElementById('jsonOutput').textContent = '';
+    // document.getElementById('jsonOutput').textContent = '';
 
     try {
         // A Post request to /extract endpoint
@@ -64,7 +64,7 @@ async function extract() {
 
         // display the parsed result with 2-space indentation
         // enable action buttons
-        document.getElementById('jsonOutput').textContent = JSON.stringify(lastJSON, null, 2);
+        // document.getElementById('jsonOutput').textContent = JSON.stringify(lastJSON, null, 2);
 
         // Pushes the values from the JSON object into the form fields. 
         // The mapping function
