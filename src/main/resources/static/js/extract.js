@@ -156,3 +156,14 @@ function copyJSON() {
 function setStatus(msg) {
     document.getElementById('status').textContent = msg;
 }
+
+// logout
+async function logout() {
+	try {
+		await fetch('/logout', { method: 'POST' });
+		window.location.href = '/login.html';
+	} catch (err) {
+		console.error('Logout failed:', err);
+		setStatus('Logout failed. Try again.');
+	}
+}

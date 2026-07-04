@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extractly - View Only</title>
+</head>
+<body>
+    <h1>Extractly - Transcript Extractor for Aether Automations Statements of Work</h1>
+    
+    <p>You have view-only access. Contact an administrator for extraction access.</p>
+    
+    <button id="logoutBtn">Logout</button>
+
+    <script>
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await fetch('/logout', { method: 'POST' });
+        window.location.href = '/login.html';
+    });
+    </script>
+</body>
+</html>
