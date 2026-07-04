@@ -40,7 +40,7 @@ public class ExtractController {
         return "redirect:/login.html";
     }
 
-    return "ADMIN".equals(role) ? "extract" : "extract-view-only";
+    return "ADMIN".equals(role) ? "display" : "display-view-only";
 }
 
     // Handles POST /extract
