@@ -179,6 +179,6 @@ async function sendJsonToZoho() {
         body: JSON.stringify(lastJSON)
 
     });
-    //const result = await res.json();
-    // setStatus('Data Submitted');
+    const result = await res.json();
+    setStatus(result.code === 3000 ? 'Message sent successfully' : 'Fail: ' + JSON.stringify(result));
 }

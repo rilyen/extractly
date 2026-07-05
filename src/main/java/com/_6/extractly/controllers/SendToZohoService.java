@@ -19,7 +19,6 @@ public class SendToZohoService {
 
     @PostMapping("/send-to-service")
     public Map<String, Object> postMethodName(@RequestBody Map<String, Object> extractData) {
-        // TODO: process POST request
 
         return addZohoForm.sendInfo(extractData);
     }
