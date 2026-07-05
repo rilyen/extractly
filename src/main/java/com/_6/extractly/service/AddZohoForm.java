@@ -1,5 +1,7 @@
 package com._6.extractly.service;
 
+import java.util.Map;
+
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -12,7 +14,7 @@ public class AddZohoForm {
         this.token = token;
     }
 
-    public void sendInfo() {
-
+    public Map<String, Object> sendInfo(Map<String, Object> extractData) {
+        return extractData;
     }
 }

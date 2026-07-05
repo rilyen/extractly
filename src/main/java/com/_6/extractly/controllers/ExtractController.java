@@ -17,16 +17,15 @@ import org.springframework.web.bind.annotation.PostMapping;
 
 import tools.jackson.databind.json.JsonMapper;
 
-
 @Controller
 public class ExtractController {
-    
+
     // API key for Gemini
     @Value("${gemini.api.key}")
     private String geminiApiKey;
 
     // use to send HTTP request to Gemini's REST API
-    private final RestTemplate restTemplate = new RestTemplate();    
+    private final RestTemplate restTemplate = new RestTemplate();
 
     // use to convert into a valid JSON string
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
@@ -34,14 +33,14 @@ public class ExtractController {
     // redirect or show page based on user role
     @GetMapping("/")
     public String index(HttpSession session) {
-    String role = (String) session.getAttribute("role");
+        String role = (String) session.getAttribute("role");
 
-    if (role == null) {
-        return "redirect:/login.html";
+        if (role == null) {
+            return "redirect:/login.html";
+        }
+
+        return "ADMIN".equals(role) ? "display" : "display-view-only";
     }
-
-    return "ADMIN".equals(role) ? "display" : "display-view-only";
-}
 
     // Handles POST /extract
     // JS calls this with a recorded meeting transcript
@@ -52,7 +51,7 @@ public class ExtractController {
     @ResponseBody
     public ResponseEntity<String> extract(@RequestBody Map<String, String> body) {
 
-        // Pull transcript 
+        // Pull transcript
         String transcript = body.get("transcript");
 
         // Reject empty/missing transcripts
@@ -119,29 +118,28 @@ public class ExtractController {
                 - cleanUpDatabase
 
                 Transcript:
-                """ + transcript;
+                """
+                + transcript;
 
         try {
-            // Build Gemini request payload as a plain java object graph that mirrors the JSON shape Gemini's API expects:
-            //  { "contents": [ { "parts": [ { "text": "..." } ] } ], 
-            //    "generationConfig": { "temperature": 0.1 } }
+            // Build Gemini request payload as a plain java object graph that mirrors the
+            // JSON shape Gemini's API expects:
+            // { "contents": [ { "parts": [ { "text": "..." } ] } ],
+            // "generationConfig": { "temperature": 0.1 } }
             //
-            // We build it this way so jsonMapper handles translating this structure into valid JSON text for us
+            // We build it this way so jsonMapper handles translating this structure into
+            // valid JSON text for us
             // (no matter what characters end up inside "prompt")
             //
             // Low temperature is more deterministic, since we want consistent output
             // responseMimeType "application/json" forces Gemini into strict JSON mode
             Map<String, Object> requestPayload = Map.of(
-                "contents", List.of(
-                    Map.of("parts", List.of(
-                        Map.of("text", prompt)
-                    ))
-                ),
-                "generationConfig", Map.of(
-                    "temperature", 0.1,
-                    "responseMimeType", "application/json"
-                )
-            );
+                    "contents", List.of(
+                            Map.of("parts", List.of(
+                                    Map.of("text", prompt)))),
+                    "generationConfig", Map.of(
+                            "temperature", 0.1,
+                            "responseMimeType", "application/json"));
 
             // Serialize object graph into valid JSON string to send as HTTP request body
             String requestBody = jsonMapper.writeValueAsString(requestPayload);
@@ -151,27 +149,28 @@ public class ExtractController {
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             // Gemini REST endpoint with our API key, using gemini 2.5 flash model
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
-        
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
+                    + geminiApiKey;
+
             // Send POST request to Gemini with JSON body + header
             // response is String
             ResponseEntity<String> geminiResponse = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                new HttpEntity<>(requestBody, headers),
-                String.class
-            );
+                    url,
+                    HttpMethod.POST,
+                    new HttpEntity<>(requestBody, headers),
+                    String.class);
 
-            // send Gemini's raw JSON response back to frontend JS (to be parsed into fields)
+            // send Gemini's raw JSON response back to frontend JS (to be parsed into
+            // fields)
             return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(geminiResponse.getBody());
-        
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(geminiResponse.getBody());
+
         } catch (Exception e) {
             // Return error message for failures
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("{\"error\": \"" + e.getMessage() + "\"}");
+                    .body("{\"error\": \"" + e.getMessage() + "\"}");
         }
-        
+
     }
 }
