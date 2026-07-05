@@ -3,13 +3,13 @@ let lastJSON = null;
 
 // Fields stored in arrays for mapping elements of same type
 // maps each JSON key to the form element's id.
-const textField = ["assignedDesigner", "dealName", "resources", "projectID", "designLink", "companyWebsite", "companyAbout", "productPurpose", "projectCostModifier",
-    "designDocuments", "allocatedBudget", "usedHours", "productionNotes", "customerConcerns", "qcTurnaroundTime", "pulledSOWEstimatedTime", "devEstimatedTime"];
+const textField = ["Assigned_Designer", "Deal_Name", "Resources_to_be_used_to_design_and_links", "ProjectID", "Design_Link", "Company_website", "What_is_the_company_about_for_context", "What_is_the_purpose_of_this_product", "Project_Cost_Modifier",
+    "Resources_to_be_used_to_design_and_links1", "Allocated_Budget", "Used_Hours", "Production_Notes", "Customer_Concerns", "QC_Turnaround_Time", "SOW_Estimated_Time", "Dev_Estimated_Time"];
 
-const Checkboxes = ["reviewProjectDocs", "draftRoadmap", "customerFeedback", "updateRoadmap", "createUpdateUserstories", "internalReview", "submittedForApproval",
-    "onTrackIATs", "onTrackEmailsVideos", "flagProblem", "fullProjectIAT", "qcTestingCompleted", "demoVideoRecorded", "editPackageVideo", "cleanUpDatabase"];
+const Checkboxes = ["Review_Project_Docs_and_Requirements", "Draft_Roadmap", "Customer_Feedback_meeting1", "Update_Roadmap", "Create_Update_Userstories1", "Internal_Review_scope_time_budget", "Submitted_to_Customer_for_Approval",
+    "On_track_with_IATs", "On_track_with_Emails_Videos", "FLAG_as_Problem", "Full_Project_IAT", "QC_Testing", "Demo_Video_Recorded", "Edit_Package_Video", "Clean_up_database_prep_for_delivery"];
 
-const DateFields = ["devStartDate", "designDueDate", "designCompletionDate", "pullClosingDate", "projectedDeliveryDate", "negotiatedDeliveryDueDate", "projectedCompletionDate"
+const DateFields = ["Dev_Start_Date", "Design_Due_Date", "Design_Completion_Date", "Closing_Date", "Projected_Delivery_Date1", "Negotiated_Delivery_Due_Date", "Projected_Completion_Date1"
 ];
 
 // The options allowed for each dropdown field.
@@ -99,9 +99,9 @@ function fillForm(map) {
     });
 
     // Map THE dropdown fields. It is set only if the value is one of the allowed options. Otherwise, it is left as the default option
-    setDropdown("stage", map.stage, Stage_dropdown);
-    setDropdown("projectClass", map.projectClass, ProjectClass_dropdown);
-    setDropdown("integration", map.integration, null);          // This set dynamic. There are too many options to pick
+    setDropdown("Stage", map.Stage, Stage_dropdown);
+    setDropdown("Project_Class", map.Project_Class, ProjectClass_dropdown);
+    setDropdown("Integration", map.Integration, null);          // This set dynamic. There are too many options to pick
 
     // map the date field to dd-mm-yyyy format
     DateFields.forEach(key => {
