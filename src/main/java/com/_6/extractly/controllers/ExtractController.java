@@ -69,53 +69,53 @@ public class ExtractController {
                 For date fields, use YYYY-MM-DD format if possible.
 
                 Special field rules:
-                - "integration": extract the company or deal name mentioned in the transcript as a plain string (e.g. "Towels Direct"). Do not invent a value.
-                - "stage": must be exactly one of these options or null: "Internal Testing", "Choice 2", "Choice 3", "Won"
+                - "Integration": extract the company or deal name mentioned in the transcript as a plain string (e.g. "Towels Direct"). Do not invent a value.
+                - "Stage": must be exactly one of these options or null: "Internal Testing", "Choice 2", "Choice 3", "Won"
                 - "projectClass": must be exactly one of these options or null: "Small (one week)", "Medium (multi week)", "Large (over X weeks)"
 
                 Fields to extract:
-                - integration
-                - assignedDesigner
-                - dealName
-                - resources
-                - projectID
-                - designLink
-                - companyWebsite
-                - companyAbout
-                - productPurpose
-                - projectCostModifier
-                - stage
-                - designDocuments
-                - reviewProjectDocs
-                - draftRoadmap
-                - customerFeedback
-                - updateRoadmap
-                - createUpdateUserstories
-                - internalReview
-                - submittedForApproval
-                - allocatedBudget
-                - usedHours
-                - projectClass
-                - productionNotes
-                - customerConcerns
-                - onTrackIATs
-                - onTrackEmailsVideos
-                - flagProblem
-                - devStartDate
-                - designDueDate
-                - designCompletionDate
-                - pullClosingDate
-                - projectedDeliveryDate
-                - negotiatedDeliveryDueDate
-                - projectedCompletionDate
-                - pulledSOWEstimatedTime
-                - devEstimatedTime
-                - qcTurnaroundTime
-                - fullProjectIAT
-                - qcTestingCompleted
-                - demoVideoRecorded
-                - editPackageVideo
-                - cleanUpDatabase
+                - Integration
+                - Assigned_Designer
+                - Deal_Name
+                - Resources_to_be_used_to_design_and_links
+                - ProjectID
+                - Design_Link
+                - Company_website
+                - What_is_the_company_about_for_context
+                - What_is_the_purpose_of_this_product"
+                - Project_Cost_Modifier
+                - Stage
+                - Resources_to_be_used_to_design_and_links1
+                - Review_Project_Docs_and_Requirements
+                - Draft_Roadmap
+                - Customer_Feedback_meeting1
+                - Update_Roadmap
+                - Create_Update_Userstories1
+                - Internal_Review_scope_time_budget
+                - Submitted_to_Customer_for_Approval
+                - Allocated_Budget
+                - Used_Hours
+                - Project_Class
+                - Production_Notes
+                - Customer_Concerns
+                - On_track_with_IATs
+                - On_track_with_Emails_Videos
+                - FLAG_as_Problem
+                - Dev_Start_Date
+                - Design_Due_Date
+                - Design_Completion_Date
+                - Closing_Date
+                - Projected_Delivery_Date1
+                - Negotiated_Delivery_Due_Date
+                - Projected_Completion_Date1
+                - SOW_Estimated_Time
+                - Dev_Estimated_Time
+                - QC_Turnaround_Time
+                - Full_Project_IAT
+                - QC_Testing
+                - Demo_Video_Recorded
+                - Edit_Package_Video
+                - Clean_up_database_prep_for_delivery
 
                 Transcript:
                 """
