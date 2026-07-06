@@ -3,7 +3,7 @@ let lastJSON = null;
 
 // Fields stored in arrays for mapping elements of same type
 // maps each JSON key to the form element's id.
-const textField = [ "assignedDesigner", "dealName", "resources", "projectID", "designLink", "companyWebsite", "companyAbout", "productPurpose", "projectCostModifier",
+const textField = ["assignedDesigner", "dealName", "resources", "projectID", "designLink", "companyWebsite", "companyAbout", "productPurpose", "projectCostModifier",
     "designDocuments", "allocatedBudget", "usedHours", "productionNotes", "customerConcerns", "qcTurnaroundTime", "pulledSOWEstimatedTime", "devEstimatedTime"];
 
 const Checkboxes = ["reviewProjectDocs", "draftRoadmap", "customerFeedback", "updateRoadmap", "createUpdateUserstories", "internalReview", "submittedForApproval",
@@ -159,11 +159,26 @@ function setStatus(msg) {
 
 // logout
 async function logout() {
-	try {
-		await fetch('/logout', { method: 'POST' });
-		window.location.href = '/login.html';
-	} catch (err) {
-		console.error('Logout failed:', err);
-		setStatus('Logout failed. Try again.');
-	}
+    try {
+        await fetch('/logout', { method: 'POST' });
+        window.location.href = '/login.html';
+    } catch (err) {
+        console.error('Logout failed:', err);
+        setStatus('Logout failed. Try again.');
+    }
+}
+
+async function sendJsonToZoho() {
+    if (!lastJSON) {
+        setStatus('Enter the Transcript.');
+        return;
+    }
+    const res = await fetch('/send-to-service', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(lastJSON)
+
+    });
+    const result = await res.json();
+    setStatus(result.code === 3000 ? 'Message sent successfully' : 'Fail: ' + JSON.stringify(result));
 }
