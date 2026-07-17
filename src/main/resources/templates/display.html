@@ -23,7 +23,17 @@
         <div class="mb-3">
             <p class="text-muted">Transcript Extractor for Aether Automations Statements of Work</p>
 
-            <!-- Transcript input box -->
+            <!-- MP4 file input box -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <label for="videoInputt" class="form-label fw-semibold">Insert MP4 file</label>
+                    <input type="file" id="videoInput" accept="video/mp4">
+                    <button onclick="extractFromVideo()" class="btn btn-primary">Submit File</button>
+                    <span id="status" class="ms-2 text-muted"></span>
+                </div>
+            </div>
+
+            <!-- Transcript text input box -->
             <div class="card mb-4">
                 <div class="card-body">
                     <label for="transcript" class="form-label fw-semibold">Paste Transcript</label>
