@@ -78,6 +78,61 @@ async function extract() {
     }
 }
 
+// triggered by the "Submit File" button
+async function extractFromVideo() {
+
+    const fileInput = document.getElementById("videoInput");
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert("Please select an mp4 file first.");
+        return;
+    }
+
+    setStatus('Extracting data...');
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+        const res = await fetch("/extract-from-video", {
+            method: "POST",
+            body: formData,
+        });
+
+        // parse response body as JSON
+        const data = await res.json();
+
+        // if request fails throw to catch block below
+        if (!res.ok) {
+            throw new Error(data.error || 'Request failed.');
+        }                                                             
+
+        // Check to make sure Gemini returned a candidate result.
+        if (!data.candidates || !data.candidates[0]) {
+            throw new Error('Gemini returned no result. Try again or shorten the transcript.');
+        }
+
+        const raw = data.candidates[0].content.parts[0].text;
+        // log raw text to inspect formatting issues
+        console.log('Raw Gemini text:', raw);
+
+        // strip markdown code so the string can be parsed as valid JSON and trim whitespace
+        const clean = raw.replace(/```json|```/g, '').trim();
+
+        // convert clean string to JS object
+        lastJSON = JSON.parse(clean);
+
+        fillForm(lastJSON);
+
+        setStatus('Form has been filled. Review before submitting.');
+    } catch (err) {
+        console.error('Video extraction failed:', err);
+        setStatus(err.message || 'Something went wrong.');
+    }
+
+}
+
 // Maps the values from the JSON object to the corresponding zohoForm fields(based on the Field Type)
 function fillForm(map) {
 

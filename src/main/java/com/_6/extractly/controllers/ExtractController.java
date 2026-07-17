@@ -1,5 +1,6 @@
 package com._6.extractly.controllers;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -8,8 +9,10 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -24,7 +27,11 @@ public class ExtractController {
     @Value("${gemini.api.key}")
     private String geminiApiKey;
 
-    // use to send HTTP request to Gemini's REST API
+    // API key for AssemblyAI
+    @Value("${assemblyai.api.key}")
+    private String assemblyAiApiKey;
+
+    // use to send HTTP request to Gemini and AssemblyAI's REST API
     private final RestTemplate restTemplate = new RestTemplate();
 
     // use to convert into a valid JSON string
@@ -171,6 +178,156 @@ public class ExtractController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("{\"error\": \"" + e.getMessage() + "\"}");
         }
+    }
 
+    // Handles POST /extract-from-video
+    // JS calls this with an uploaded mp4 file
+    // Transcribes the audio via AssemblyAI, then sends the resulting transcript
+    // to Gemini with the same extraction instructions as /extract
+    // Returns Gemini's raw JSON response to the frontend to parse
+    @PostMapping("/extract-from-video")
+    @ResponseBody
+    public ResponseEntity<String> extractFromVideo(@RequestParam("file") MultipartFile file) {
+
+        String transcript;
+        try {
+            transcript = transcribe(file.getBytes());
+        } catch (IOException | InterruptedException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("{\"error\": \"" + e.getMessage() + "\"}");
+        }
+
+        if (transcript == null || transcript.isBlank()) {
+            return ResponseEntity.badRequest().body("{\"error\":\"Transcript is empty.\"}");
+        }
+
+        // Instructions given to Gemini with transcript text appended at the end
+        String prompt = """
+                You are a data extraction assistant.
+                Read the transcript below and extract values for each of the following fields.
+                Return ONLY a valid JSON object — no markdown, no explanation, no code fences.
+                If a field is not mentioned in the transcript, set its value to null.
+                For boolean fields (checkboxes / yes-no), use true or false.
+                For date fields, use YYYY-MM-DD format if possible.
+
+                Special field rules:
+                - "Integration": extract the company or deal name mentioned in the transcript as a plain string (e.g. "Towels Direct"). Do not invent a value.
+                - "Stage": must be exactly one of these options or null: "Internal Testing", "Choice 2", "Choice 3", "Won"
+                - "projectClass": must be exactly one of these options or null: "Small (one week)", "Medium (multi week)", "Large (over X weeks)"
+
+                Fields to extract:
+                - Integration
+                - Assigned_Designer
+                - Deal_Name
+                - Resources_to_be_used_to_design_and_links
+                - ProjectID
+                - Design_Link
+                - Company_website
+                - What_is_the_company_about_for_context
+                - What_is_the_purpose_of_this_product"
+                - Project_Cost_Modifier
+                - Stage
+                - Resources_to_be_used_to_design_and_links1
+                - Review_Project_Docs_and_Requirements
+                - Draft_Roadmap
+                - Customer_Feedback_meeting1
+                - Update_Roadmap
+                - Create_Update_Userstories1
+                - Internal_Review_scope_time_budget
+                - Submitted_to_Customer_for_Approval
+                - Allocated_Budget
+                - Used_Hours
+                - Project_Class
+                - Production_Notes
+                - Customer_Concerns
+                - On_track_with_IATs
+                - On_track_with_Emails_Videos
+                - FLAG_as_Problem
+                - Dev_Start_Date
+                - Design_Due_Date
+                - Design_Completion_Date
+                - Closing_Date
+                - Projected_Delivery_Date1
+                - Negotiated_Delivery_Due_Date
+                - Projected_Completion_Date1
+                - SOW_Estimated_Time
+                - Dev_Estimated_Time
+                - QC_Turnaround_Time
+                - Full_Project_IAT
+                - QC_Testing
+                - Demo_Video_Recorded
+                - Edit_Package_Video
+                - Clean_up_database_prep_for_delivery
+
+                Transcript:
+                """
+                + transcript;
+
+        try {
+            Map<String, Object> requestPayload = Map.of(
+                    "contents", List.of(
+                            Map.of("parts", List.of(
+                                    Map.of("text", prompt)))),
+                    "generationConfig", Map.of(
+                            "temperature", 0.1,
+                            "responseMimeType", "application/json"));
+
+            String requestBody = jsonMapper.writeValueAsString(requestPayload);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
+                    + geminiApiKey;
+
+            ResponseEntity<String> geminiResponse = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    new HttpEntity<>(requestBody, headers),
+                    String.class);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(geminiResponse.getBody());
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("{\"error\": \"" + e.getMessage() + "\"}");
+        }
+    }
+
+    
+    private String transcribe(byte[] fileBytes) throws InterruptedException {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", assemblyAiApiKey);
+
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        HttpEntity<byte[]> uploadEntity = new HttpEntity<>(fileBytes, headers);
+        Map uploadResponse = restTemplate.postForObject(
+                "https://api.assemblyai.com/v2/upload", uploadEntity, Map.class);
+        String audioUrl = (String) uploadResponse.get("upload_url");
+
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> payload = Map.of("audio_url", audioUrl);
+        HttpEntity<Map<String, Object>> submitEntity = new HttpEntity<>(payload, headers);
+        Map submitResponse = restTemplate.postForObject(
+                "https://api.assemblyai.com/v2/transcript", submitEntity, Map.class);
+        String id = (String) submitResponse.get("id");
+
+        HttpEntity<Void> pollEntity = new HttpEntity<>(headers);
+        while (true) {
+            Map pollResponse = restTemplate.exchange(
+                    "https://api.assemblyai.com/v2/transcript/" + id,
+                    HttpMethod.GET, pollEntity, Map.class).getBody();
+
+            String status = (String) pollResponse.get("status");
+            if ("completed".equals(status)) {
+                return (String) pollResponse.get("text");
+            }
+            if ("error".equals(status)) {
+                throw new RuntimeException("Transcription failed: " + pollResponse.get("error"));
+            }
+            Thread.sleep(2000);
+        }
     }
 }
