@@ -14,36 +14,6 @@
     <p id="status"></p>
     <a href="/register.html">Need an account? Register</a>
 
-    <script>
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const statusEl = document.getElementById('status');
-
-        statusEl.textContent = 'Logging in...';
-
-        try {
-            const res = await fetch('/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                statusEl.textContent = data.error || 'Login failed.';
-                return;
-            }
-
-            window.location.href = '/';
-
-        } catch (err) {
-            statusEl.textContent = 'Something went wrong.';
-            console.error(err);
-        }
-    });
-    </script>
+    <script src="/js/login.js"></script>
 </body>
 </html>
