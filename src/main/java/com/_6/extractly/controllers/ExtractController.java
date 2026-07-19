@@ -32,10 +32,14 @@ public class ExtractController {
     private String assemblyAiApiKey;
 
     // use to send HTTP request to Gemini and AssemblyAI's REST API
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     // use to convert into a valid JSON string
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
+
+    public ExtractController(RestTemplate restTemplate) {
+    this.restTemplate = restTemplate;
+}
 
     // redirect or show page based on user role
     @GetMapping("/")
