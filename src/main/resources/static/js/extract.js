@@ -28,18 +28,22 @@ async function extract() {
     }
 
     setStatus('Calling Gemini...');
-    document.getElementById('jsonOutput').textContent = '';
+    // document.getElementById('jsonOutput').textContent = '';
 
     try {
-        // A Post request to /extract endpoint
+        // A Post request to an "/extract" endpoint
         // Backend controller returns a JSON object response
-        const res = await fetch('/extract', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ transcript: transcript })
-        });
+        // res is a variable to hold the Response object
+        const res = await fetch('/extract', {                   // fetch is a built-in function to make HTTP requests. The request is sent to the "/extract"
+            method: 'POST',                                     // Post request to the endpoint. 
+            headers: { 'Content-Type': 'application/json' },    // The request body is in JSON format, so we set the Content-Type header to application/json
+            body: JSON.stringify({ transcript: transcript })    // { transcript: transcript } JavaScript first wraps text into an object and flattens it so it can travel over the internet. The text is sent with a string identifier named 'transcript'. Then JSON.stringify to convert the JS object to a JSON string
+        });                                                     // text is sent like "{\"transcript\":\"We had a meeting with Towels Direct. Bobby is the designer.\"}"
+        // A ResponseEntity(that the controller returns) is an entire HTTP response. The JSON is the body inside that response. Like the paper inside an envelope letter.
 
         // parse response body as JSON
+        // The body that arrives is still is a string and in the format that Gemini returned(including the candidate, content, parts, text etc). It looks like this "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"{\\\"integration\\\":\\\"Towels Direct\\\"}\"}]}}]}"
+        // Below now parses it which converts it to somewhat JSON format and removes the "". Allowing us to acces the data in text later
         const data = await res.json();
 
         // if request fails throw to catch block below
@@ -64,7 +68,7 @@ async function extract() {
 
         // display the parsed result with 2-space indentation
         // enable action buttons
-        document.getElementById('jsonOutput').textContent = JSON.stringify(lastJSON, null, 2);
+        // document.getElementById('jsonOutput').textContent = JSON.stringify(lastJSON, null, 2);
 
         // Pushes the values from the JSON object into the form fields. 
         // The mapping function

@@ -4,13 +4,18 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.bind.annotation.PostMapping;
 
 import tools.jackson.databind.json.JsonMapper;
 
@@ -122,6 +127,7 @@ public class ExtractController {
             //
             // Low temperature is more deterministic, since we want consistent output
             // responseMimeType "application/json" forces Gemini into strict JSON mode
+            // maps string to object(where object can be any type). Example: "temperature" : some object (in this case a double). "responseMimeType" : some object (in this case a string)
             Map<String, Object> requestPayload = Map.of(
                 "contents", List.of(
                     Map.of("parts", List.of(
@@ -150,10 +156,12 @@ public class ExtractController {
                 url,
                 HttpMethod.POST,
                 new HttpEntity<>(requestBody, headers),
-                String.class
+                String.class                // response type mapping. When we set it to string it doesnt parse instead just stores as a string. Exammple now its stored as {"contents":[{"parts":[{"text":"{\"integration\":\"Towels Direct\",\"assignedDesigner\":null}]                          
             );
 
             // send Gemini's raw JSON response back to frontend JS (to be parsed into fields)
+            // returns the response the frontend requested
+            // this returns response to requester in format status - header(content type) -  body
             return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(geminiResponse.getBody());
