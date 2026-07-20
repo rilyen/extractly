@@ -214,7 +214,7 @@ public class ExtractController {
                 Return ONLY a valid JSON object — no markdown, no explanation, no code fences.
                 If a field is not mentioned in the transcript, set its value to null.
                 For boolean fields (checkboxes / yes-no), use true or false.
-                For date fields, use YYYY-MM-DD format if possible.
+                For date fields, use DD-MMM-YYYY format if possible.
 
                 Special field rules:
                 - "Integration": extract the company or deal name mentioned in the transcript as a plain string (e.g. "Towels Direct"). Do not invent a value.
