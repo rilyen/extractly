@@ -47,19 +47,19 @@ async function extract() {
             throw new Error(data.error || 'Request failed.');
         }
 
-        // Check to make sure Gemini returned a candidate result.
-        if (!data.candidates || !data.candidates[0]) {
-            throw new Error('Gemini returned no result. Try again or shorten the transcript.');
-        }
-        const raw = data.candidates[0].content.parts[0].text;
-        // log raw text to inspect formatting issues
-        console.log('Raw Gemini text:', raw);
+        // // Check to make sure Gemini returned a candidate result.
+        // if (!data.candidates || !data.candidates[0]) {
+        //     throw new Error('Gemini returned no result. Try again or shorten the transcript.');
+        // }
+        // const raw = data.candidates[0].content.parts[0].text;
+        // // log raw text to inspect formatting issues
+        // console.log('Raw Gemini text:', raw);
 
-        // strip markdown code so the string can be parsed as valid JSON and trim whitespace
-        const clean = raw.replace(/```json|```/g, '').trim();
+        // // strip markdown code so the string can be parsed as valid JSON and trim whitespace
+        // const clean = raw.replace(/```json|```/g, '').trim();
 
         // convert clean string to JS object
-        lastJSON = JSON.parse(clean);
+        lastJSON = parseGeminiResponse(data);
 
 
         // display the parsed result with 2-space indentation
@@ -68,13 +68,53 @@ async function extract() {
 
         // Pushes the values from the JSON object into the form fields. 
         // The mapping function
-        fillForm(lastJSON);
+        // fillForm(lastJSON);
+
+        showJSON(lastJSON);
 
         setStatus('Form has been filled. Review before submitting.');
 
     } catch (err) {
         setStatus('Error: ' + err.message);
         console.error(err);
+    }
+}
+
+function parseGeminiResponse(data) {
+    // Check to make sure Gemini returned a candidate result.
+    if (!data.candidates || !data.candidates[0]) {
+        throw new Error('Gemini returned no result. Try again or shorten the transcript.');
+    }
+    const candidate = data.candidates[0];
+    // join ALL parts, long responses may be split across several
+    const parts = (candidate.content && candidate.content.parts) || [];
+    const raw = parts.map(p => p.text || '').join('');
+    // log raw text and finish reason to inspect formatting issues
+    console.log('Gemini finishReason:', candidate.finishReason);
+    console.log('Raw Gemini text:', raw);
+    // strip markdown code fences so the string can be parsed as valid JSON
+    const clean = raw.replace(/```json|```/g, '').trim();
+    try {
+        // convert clean string to JS object
+        return JSON.parse(clean);
+    } catch (err) {
+        // show the raw text on the page so the failure point can be inspected
+        const output = document.getElementById('jsonOutput');
+        if (output) {
+            output.textContent = 'PARSE FAILED. Raw Gemini output below:\n\n' + raw;
+        }
+        if (candidate.finishReason === 'MAX_TOKENS') {
+            throw new Error('Gemini hit its output token limit, the JSON is cut off. Shorten the transcript or raise maxOutputTokens.');
+        }
+        throw new Error('Could not parse Gemini output as JSON: ' + err.message);
+    }
+}
+
+// Print extracted JSON object into #jsonOutput block on the page
+function showJSON(obj) {
+    const output = document.getElementById('jsonOutput');
+    if (output) {
+        output.textContent = JSON.stringify(obj, null, 2);
     }
 }
 
@@ -123,9 +163,10 @@ async function extractFromVideo() {
         // convert clean string to JS object
         lastJSON = JSON.parse(clean);
 
-        fillForm(lastJSON);
-
-        setStatus('Form has been filled. Review before submitting.');
+        // fillForm(lastJSON);
+        showJSON(lastJSON);
+        setStatus('Extraction complete. Review the JSON below.');
+        // setStatus('Form has been filled. Review before submitting.');
     } catch (err) {
         console.error('Video extraction failed:', err);
         setStatus(err.message || 'Something went wrong.');
