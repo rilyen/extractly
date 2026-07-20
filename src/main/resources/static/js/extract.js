@@ -281,7 +281,7 @@ function addIfEntry(entry) {
     const body = document.getElementById('IfTable');
     const row = document.createElement('tr');
 
-    // These adds a cell column to table entry and matches the text format in zoho creator for easier zoho mapping
+    // adds a cell column to table entry and matches the text format in zoho creator for easier zoho mapping
     const numberCell = CreateTextInput(entry.Trigger_Number);
     const appCell = CreateTextInput(entry.Name_of_Trigger_Application);
     const zohoCell = makeYesNoCell(entry.Is_the_application_a_Zoho_App);
@@ -440,6 +440,7 @@ function saveFormToProduct(index) {
 function saveIfEntries() {
     const rows = document.getElementById('IfTable').children;
     const Triggerlist = [];
+    // loop over each row and stores each entry in the cell
     for (let i = 0; i < rows.length; i++) {
         const cells = rows[i].children;                 // read each cell's value into fixed column
         const trigger = {
@@ -456,7 +457,7 @@ function saveIfEntries() {
     return Triggerlist;        // All the triggers are stored on the product
 }
 
-// read all THEN rows back into an array of objects
+// repeat for all the THEN rows. Save back into an array of objects
 function saveThenEntries() {
     const rows = document.getElementById('ThenTable').children;
     const Triggerlist = [];
@@ -475,7 +476,7 @@ function saveThenEntries() {
     return Triggerlist;
 }
 
-// get the value of the input inside the table column
+// function to get the value of the input inside the table column
 function ColumnValue(cell) {
     const field = cell.children[0];        // the input or select or the textarea
     if (!field) return null;
@@ -490,7 +491,6 @@ function setDropdown(id, field) {
     element.value = field;
 }
 
-// read a dropdown's value, or null if empty
 function readValue(id) {
     const element = document.getElementById(id);
     if (element && element.value !== '') {
