@@ -1,6 +1,6 @@
 // holds most recently extracted JSON object (the whole { Products: [...] })
 let lastJSON = null;
-
+var sendJson = null;
 // Fields stored in arrays for mapping elements of same type
 // maps each JSON key to the form element's id.
 const textField = ["Deal_ID", "Product_Name", "Product_Description",
@@ -58,10 +58,10 @@ async function extract() {
         // convert clean string to JS object
         lastJSON = parseGeminiResponse(data);
 
-
+        //   console.log('data:', lastJSON.data[0]);
         // display the parsed result with 2-space indentation
         // enable action buttons
-        // document.getElementById('jsonOutput').textContent = JSON.stringify(lastJSON, null, 2);
+        document.getElementById('jsonOutput').textContent = JSON.stringify(lastJSON, null, 2);
 
         // Pushes the values from the JSON object into the form fields. 
         // The mapping function
@@ -92,6 +92,8 @@ function parseGeminiResponse(data) {
     // log raw text and finish reason to inspect formatting issues
     console.log('Gemini finishReason:', candidate.finishReason);
     console.log('Raw Gemini text:', raw);
+    sendJson = raw;
+    console.log(sendJson);
     // strip markdown code fences so the string can be parsed as valid JSON
     const clean = raw.replace(/```json|```/g, '').trim();
     try {
@@ -146,7 +148,7 @@ async function extractFromVideo() {
         // if request fails throw to catch block below
         if (!res.ok) {
             throw new Error(data.error || 'Request failed.');
-        }                                                             
+        }
 
         // Check to make sure Gemini returned a candidate result.
         if (!data.candidates || !data.candidates[0]) {
@@ -275,7 +277,7 @@ function AutomationTriggerTable(triggers) {             // IF TABLE
 // The function adds a new entry to IFs Automation trigger
 // Dynamically adds a entire row of entry
 function addIfEntry(entry) {
-    if (!entry){ 
+    if (!entry) {
         entry = {};
     }
     const body = document.getElementById('IfTable');
@@ -316,7 +318,7 @@ function StandardFunctionOutput(outputs) {                           // THEN TAB
 // The function adds a new entry to Standard Function Outputs (THENs)
 // Dynamically adds a entire row of entry
 function addThenEntry(entry) {
-    if (!entry){ 
+    if (!entry) {
         entry = {};
     }
     const body = document.getElementById('ThenTable');
@@ -560,7 +562,8 @@ async function sendJsonToZoho() {
     const res = await fetch('/send-to-service', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(lastJSON)
+        body: sendJson
+
     });
     const result = await res.json();
     setStatus(result.code === 3000 ? 'Message sent successfully' : 'Fail: ' + JSON.stringify(result));
