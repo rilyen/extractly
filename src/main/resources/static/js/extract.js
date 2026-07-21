@@ -1,10 +1,10 @@
 // holds most recently extracted JSON object (the whole { Products: [...] })
 let lastJSON = null;
-
+var sendJson = null;
 // Fields stored in arrays for mapping elements of same type
 // maps each JSON key to the form element's id.
-const textField = ["Deal_ID", "Product_Name", "Product_Description",
-    "Total_Product_Cost_Hours", "Estimated_Duration_to_Implement_Days",
+const textField = ["Deal_ID", "What_is_the_name_of_this_Product", "Product_Description1",
+    "Product_Cost", "Estimated_Duration_to_Implement_days",
     "General_Comments", "Task_ID"];
 
 const Checkboxes = ["Passed_IAT", "User_Story_Created"];
@@ -58,7 +58,7 @@ async function extract() {
         // convert clean string to JS object
         lastJSON = parseGeminiResponse(data);
 
-
+        //   console.log('data:', lastJSON.data[0]);
         // display the parsed result with 2-space indentation
         // enable action buttons
         // document.getElementById('jsonOutput').textContent = JSON.stringify(lastJSON, null, 2);
@@ -92,6 +92,8 @@ function parseGeminiResponse(data) {
     // log raw text and finish reason to inspect formatting issues
     console.log('Gemini finishReason:', candidate.finishReason);
     console.log('Raw Gemini text:', raw);
+    sendJson = raw;
+    console.log(sendJson);
     // strip markdown code fences so the string can be parsed as valid JSON
     const clean = raw.replace(/```json|```/g, '').trim();
     try {
@@ -146,7 +148,7 @@ async function extractFromVideo() {
         // if request fails throw to catch block below
         if (!res.ok) {
             throw new Error(data.error || 'Request failed.');
-        }                                                             
+        }
 
         // Check to make sure Gemini returned a candidate result.
         if (!data.candidates || !data.candidates[0]) {
@@ -177,7 +179,7 @@ async function extractFromVideo() {
 
 // Function to fill the product dropdown field with each of the menttioned product name, then load the product data into the field
 function selectProduct(data) {
-    const products = (data && data.Products) || [];
+    const products = (data && data.data) || [];
     const productSelected = document.getElementById('productSelected');
     const table = document.getElementById('productOptions');
     if (!productSelected) return;
@@ -187,7 +189,7 @@ function selectProduct(data) {
     for (let i = 0; i < products.length; i++) {
         const option = document.createElement('option');
         option.value = i;
-        option.textContent = products[i].Product_Name || ('Product ' + (i + 1));
+        option.textContent = products[i].What_is_the_name_of_this_Product || ('Product ' + (i + 1));
         productSelected.appendChild(option);
     }
 
@@ -275,7 +277,7 @@ function AutomationTriggerTable(triggers) {             // IF TABLE
 // The function adds a new entry to IFs Automation trigger
 // Dynamically adds a entire row of entry
 function addIfEntry(entry) {
-    if (!entry){ 
+    if (!entry) {
         entry = {};
     }
     const body = document.getElementById('IfTable');
@@ -288,7 +290,7 @@ function addIfEntry(entry) {
     const eventCell = CreateTextArea(entry.Trigger_Event_Description);
     const filtersCell = CreateTextArea(entry.Filters);
     const assumeCell = CreateTextArea(entry.Trigger_Assumptions);
-    const hoursCell = CreateTextInput(entry.Estimated_Hours);
+    const hoursCell = CreateTextInput(entry.Hours);
     const deleteEntry = DeleteCellButton();
 
     // Dynamically adds a entire row of entry
@@ -316,7 +318,7 @@ function StandardFunctionOutput(outputs) {                           // THEN TAB
 // The function adds a new entry to Standard Function Outputs (THENs)
 // Dynamically adds a entire row of entry
 function addThenEntry(entry) {
-    if (!entry){ 
+    if (!entry) {
         entry = {};
     }
     const body = document.getElementById('ThenTable');
@@ -397,8 +399,8 @@ function DeleteCellButton() {
 // makes the edits directly into lastJSON
 // its run everytime before we switch products
 function saveFormToProduct(index) {
-    if (!lastJSON || !lastJSON.Products || !lastJSON.Products[index]) return;
-    const product = lastJSON.Products[index];           // product object to update and store below values
+    if (!lastJSON || !lastJSON.data || !lastJSON.data[index]) return;
+    const product = lastJSON.data[index];           // product object to update and store below values
 
     // the text fields
     textField.forEach(key => {
@@ -450,7 +452,7 @@ function saveIfEntries() {
             Trigger_Event_Description: ColumnValue(cells[3]),
             Filters: ColumnValue(cells[4]),
             Trigger_Assumptions: ColumnValue(cells[5]),
-            Estimated_Hours: ColumnValue(cells[6])
+            Hours: ColumnValue(cells[6])
         };
         Triggerlist.push(trigger);
     }
@@ -560,7 +562,8 @@ async function sendJsonToZoho() {
     const res = await fetch('/send-to-service', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(lastJSON)
+        body: sendJson
+
     });
     const result = await res.json();
     setStatus(result.code === 3000 ? 'Message sent successfully' : 'Fail: ' + JSON.stringify(result));

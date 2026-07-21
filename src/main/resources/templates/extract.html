@@ -1,29 +1,34 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Extractly</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <script src="/js/extract.js?v=2" defer></script>
     <!-- <script src="/js/extract.js" defer></script> -->
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="m-4 mx-4">
-        <button id="logoutBtn" onclick="logout()" class="btn btn-primary">Logout</button>
+      <button id="logoutBtn" onclick="logout()" class="btn btn-primary">
+        Logout
+      </button>
     </div>
 
     <header>
-        <div class="mx-3 my-5">
-            <h1 class="display-4 fw-bold text-uppercase text-center">Extractly</h1>
-        </div>
+      <div class="mx-3 my-5">
+        <h1 class="display-4 fw-bold text-uppercase text-center">Extractly</h1>
+      </div>
     </header>
 
     <main class="mx-3">
-        <div class="mb-3">
-            <!-- MP4 file input box -->
-                <!-- <div class="card mb-4">
+      <div class="mb-3">
+        <!-- MP4 file input box -->
+        <!-- <div class="card mb-4">
                     <div class="card-body">
                         <label for="videoInputt" class="form-label fw-semibold">Insert MP4 file</label>
                         <input type="file" id="videoInput" accept="video/mp4">
@@ -33,181 +38,253 @@
                 </div>
             </div> -->
 
-            <!-- Transcript paste box -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <label for="transcript" class="form-label fw-semibold">Paste Transcript</label>
-                    <textarea id="transcript" class="form-control mb-3" rows="6"
-                            placeholder="Paste your meeting transcript here..."></textarea>
-                    <button onclick="extract()" class="btn btn-primary">Extract JSON</button>
-                    <button onclick="copyJSON()" class="btn btn-outline-secondary">Copy JSON</button>
-                    <span id="status" class="ms-2 text-muted"></span>
-                </div>
-            </div>
+        <!-- Transcript paste box -->
+        <div class="card mb-4">
+          <div class="card-body">
+            <label for="transcript" class="form-label fw-semibold"
+              >Paste Transcript</label
+            >
+            <textarea
+              id="transcript"
+              class="form-control mb-3"
+              rows="6"
+              placeholder="Paste your meeting transcript here..."
+            ></textarea>
+            <button onclick="extract()" class="btn btn-primary">
+              Extract JSON
+            </button>
+            <button onclick="copyJSON()" class="btn btn-outline-secondary">
+              Copy JSON
+            </button>
+            <span id="status" class="ms-2 text-muted"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product selector for when there are multiple products -->
+      <div class="mb-4" id="productOptions" style="display: none">
+        <label for="productSelected" class="form-label fw-semibold"
+          >Select Product</label
+        >
+        <select
+          id="productSelected"
+          class="form-select"
+          onchange="ProductChosen()"
+        ></select>
+        <small class="text-muted"
+          >Pick a project to load and edit its details.</small
+        >
+      </div>
+
+      <h1>Product Creator</h1>
+
+      <!-- The product form -->
+      <form id="productForm">
+        <!-- Product Details -->
+        <h2 class="mb-3">Product Details</h2>
+
+        <div class="mb-3">
+          <label for="Deal_ID" class="form-label">Deal ID</label>
+          <input
+            type="text"
+            id="Deal_ID"
+            class="form-control"
+            placeholder="#######"
+          />
         </div>
 
-        <!-- Product selector for when there are multiple products -->
-        <div class="mb-4" id="productOptions" style="display:none;">
-            <label for="productSelected" class="form-label fw-semibold">Select Product</label>
-            <select id="productSelected" class="form-select" onchange="ProductChosen()"></select>
-            <small class="text-muted">Pick a project to load and edit its details.</small>
+        <div class="mb-3">
+          <label for="Product_Name" class="form-label"
+            >What is the name of this Product?*</label
+          >
+          <input
+            type="text"
+            id="What_is_the_name_of_this_Product"
+            class="form-control"
+          />
         </div>
-        
-        <h1>Product Creator</h1>
 
+        <div class="mb-3">
+          <label for="Product_Description" class="form-label"
+            >Product Description *</label
+          >
+          <textarea
+            id="Product_Description1"
+            class="form-control"
+            rows="4"
+          ></textarea>
+        </div>
 
-        <!-- The product form -->
-        <form id="productForm">
+        <div class="mb-3">
+          <label for="DeliveryRate" class="form-label">Delivery Rate *</label>
+          <select id="Delivery_Rate" class="form-select">
+            <option value="Normal">Normal</option>
+            <option value="Rush">Urgent</option>
+            <option value="Slow">Immediate</option>
+          </select>
+        </div>
 
-            <!-- Product Details -->
-            <h2 class="mb-3">Product Details</h2>
+        <div class="mb-3">
+          <label for="ServiceType" class="form-label"
+            >What types of services are required for this product? *</label
+          >
+          <input type="text" id="Service_Types" class="form-control" readonly />
+          <p></p>
+        </div>
 
-            <div class="mb-3">
-                <label for="Project" class="form-label">Project</label>
-                <select id="Project" class="form-select">
-                    <option value="">-Select-</option>
-                </select>
-            </div>
+        <!-- Automation Triggers (IFs) -->
+        <h2 class="mb-3 mt-4">Automation Triggers (IFs)</h2>
+        <div class="table-responsive mb-2">
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th>Trigger Number</th>
+                <th>Name of Trigger Application</th>
+                <th>Is the application a Zoho App?</th>
+                <th>Trigger Event Description (in detail)</th>
+                <th>Filters (separate with ';')</th>
+                <th>Trigger Assumptions</th>
+                <th>Estimated Hours</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="IfTable"></tbody>
+          </table>
+        </div>
+        <button
+          type="button"
+          class="btn btn-secondary mb-4"
+          onclick="addIfEntry()"
+        >
+          + Add New
+        </button>
 
-            <div class="mb-3">
-                <label for="Deal_ID" class="form-label">Deal ID</label>
-                <input type="text" id="Deal_ID" class="form-control" placeholder="#######">
-            </div>
+        <!-- Standard Function Outputs (THENs) -->
+        <h2 class="mb-3 mt-4">Standard Function Outputs (THENs)</h2>
+        <div class="table-responsive mb-2">
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th>Select Trigger</th>
+                <th>Standard Services</th>
+                <th>Inclusions</th>
+                <th>Exclusions</th>
+                <th>Detailed Description</th>
+                <th>Estimated Hours</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="ThenTable"></tbody>
+          </table>
+        </div>
+        <button
+          type="button"
+          class="btn btn-secondary mb-4"
+          onclick="addThenEntry()"
+        >
+          + Add New
+        </button>
 
-            <div class="mb-3">
-                <label for="DealNameAccountContact" class="form-label">Deal Name - Account - Contact</label>
-                <select id="DealNameAccountContact" class="form-select">
-                    <option value="">-Select-</option>
-                </select>
-            </div>
+        <!-- Statement of Work Generator -->
+        <h2 class="mb-3 mt-4">Statement of Work Generator</h2>
 
-            <div class="mb-3">
-                <label for="Product_Name" class="form-label">What is the name of this Product? *</label>
-                <input type="text" id="Product_Name" class="form-control">
-            </div>
+        <div class="mb-3">
+          <label for="Total_Product_Cost_Hours" class="form-label"
+            >Total Product Cost (Hours)</label
+          >
+          <input
+            type="text"
+            id="Product_Cost"
+            class="form-control"
+            placeholder="#######.##"
+          />
+        </div>
 
-            <div class="mb-3">
-                <label for="Product_Description" class="form-label">Product Description *</label>
-                <textarea id="Product_Description" class="form-control" rows="4"></textarea>
-            </div>
+        <div class="mb-3">
+          <label for="Estimated_Duration_to_Implement_Days" class="form-label"
+            >Estimated Duration to Implement (days)</label
+          >
+          <input
+            type="text"
+            id="Estimated_Duration_to_Implement_days"
+            class="form-control"
+            placeholder="#######"
+          />
+        </div>
 
-            <div class="mb-3">
-                <label for="DeliveryRate" class="form-label">Delivery Rate *</label>
-                <select id="DeliveryRate" class="form-select">
-                    <option value="Normal">Normal</option>
-                    <option value="Rush">Urgent</option>
-                    <option value="Slow">Immediate</option>
-                </select>
-            </div>
+        <!-- Product Review Section -->
+        <h2 class="mb-3 mt-4">Product Review Section</h2>
 
-            <div class="mb-3">
-                <label for="ServiceType" class="form-label">What types of services are required for this product? *</label>
-                <input type="text" id="ServiceType" class="form-control" readonly>
-                <p> </p>
-            </div>
+        <div class="mb-3">
+          <label for="ReviewerApprover" class="form-label"
+            >Reviewer / Approver</label
+          >
+          <select id="ReviewerApprover" class="form-select">
+            <option value="">-Select-</option>
+          </select>
+        </div>
 
-            <!-- Automation Triggers (IFs) -->
-            <h2 class="mb-3 mt-4">Automation Triggers (IFs)</h2>
-            <div class="table-responsive mb-2">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Trigger Number</th>
-                            <th>Name of Trigger Application</th>
-                            <th>Is the application a Zoho App?</th>
-                            <th>Trigger Event Description (in detail)</th>
-                            <th>Filters (separate with ';')</th>
-                            <th>Trigger Assumptions</th>
-                            <th>Estimated Hours</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="IfTable"></tbody>
-                </table>
-            </div>
-            <button type="button" class="btn btn-secondary mb-4" onclick="addIfEntry()">+ Add New</button>
+        <div class="mb-3">
+          <label for="Latest_Review_Date" class="form-label"
+            >Latest Review Date</label
+          >
+          <input
+            type="text"
+            id="Latest_Review_Date"
+            class="form-control"
+            placeholder="dd-MMM-yyyy"
+          />
+        </div>
 
-            <!-- Standard Function Outputs (THENs) -->
-            <h2 class="mb-3 mt-4">Standard Function Outputs (THENs)</h2>
-            <div class="table-responsive mb-2">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Select Trigger</th>
-                            <th>Standard Services</th>
-                            <th>Inclusions</th>
-                            <th>Exclusions</th>
-                            <th>Detailed Description</th>
-                            <th>Estimated Hours</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="ThenTable"></tbody>
-                </table>
-            </div>
-            <button type="button" class="btn btn-secondary mb-4" onclick="addThenEntry()">+ Add New</button>
+        <div class="mb-3">
+          <label for="General_Comments" class="form-label"
+            >General Comments</label
+          >
+          <textarea
+            id="General_Comments"
+            class="form-control"
+            rows="3"
+          ></textarea>
+        </div>
 
-            <!-- Statement of Work Generator -->
-            <h2 class="mb-3 mt-4">Statement of Work Generator</h2>
+        <div class="mb-3 form-check">
+          <input type="checkbox" id="Passed_IAT" class="form-check-input" />
+          <label for="Passed_IAT" class="form-check-label">Passed IAT</label>
+        </div>
 
-            <div class="mb-3">
-                <label for="Total_Product_Cost_Hours" class="form-label">Total Product Cost (Hours)</label>
-                <input type="text" id="Total_Product_Cost_Hours" class="form-control" placeholder="#######.##">
-            </div>
+        <div class="mb-3">
+          <label for="Task_ID" class="form-label">Task ID</label>
+          <input type="text" id="Task_ID" class="form-control" />
+        </div>
 
-            <div class="mb-3">
-                <label for="Estimated_Duration_to_Implement_Days" class="form-label">Estimated Duration to Implement (days)</label>
-                <input type="text" id="Estimated_Duration_to_Implement_Days" class="form-control" placeholder="#######">
-            </div>
+        <div class="mb-3 form-check">
+          <input
+            type="checkbox"
+            id="User_Story_Created"
+            class="form-check-input"
+          />
+          <label for="User_Story_Created" class="form-check-label"
+            >User Story Created</label
+          >
+        </div>
 
-            <!-- Product Review Section -->
-            <h2 class="mb-3 mt-4">Product Review Section</h2>
+        <!-- Actions -->
+        <div class="my-4">
+          <!-- Waiting on Permission to post to the client's API, the pipeline to post on Zoho's api is built, delete hidden below later. This calls the sendJsonToZoho function in extract.js which calls post controller that calls the service to the zoho api. -->
+          <button
+            onclick="sendJsonToZoho()"
+            type="button"
+            class="btn btn-success"
+          >
+            Submit to Zoho
+          </button>
+          <button type="reset" class="btn btn-secondary">Reset</button>
+        </div>
+      </form>
 
-            <div class="mb-3">
-                <label for="ReviewerApprover" class="form-label">Reviewer / Approver</label>
-                <select id="ReviewerApprover" class="form-select">
-                    <option value="">-Select-</option>
-                </select>
-            </div>
-
-            <div class="mb-3">
-                <label for="Latest_Review_Date" class="form-label">Latest Review Date</label>
-                <input type="text" id="Latest_Review_Date" class="form-control" placeholder="dd-MMM-yyyy">
-            </div>
-
-            <div class="mb-3">
-                <label for="General_Comments" class="form-label">General Comments</label>
-                <textarea id="General_Comments" class="form-control" rows="3"></textarea>
-            </div>
-
-            <div class="mb-3 form-check">
-                <input type="checkbox" id="Passed_IAT" class="form-check-input">
-                <label for="Passed_IAT" class="form-check-label">Passed IAT</label>
-            </div>
-
-            <div class="mb-3">
-                <label for="Task_ID" class="form-label">Task ID</label>
-                <input type="text" id="Task_ID" class="form-control">
-            </div>
-
-            <div class="mb-3 form-check">
-                <input type="checkbox" id="User_Story_Created" class="form-check-input">
-                <label for="User_Story_Created" class="form-check-label">User Story Created</label>
-            </div>
-
-            <!-- Actions -->
-            <div class="my-4">
-                <!-- Waiting on Permission to post to the client's API, the pipeline to post on Zoho's api is built, delete hidden below later. This calls the sendJsonToZoho function in extract.js which calls post controller that calls the service to the zoho api. -->
-                <button onclick="sendJsonToZoho()" type="button" class="btn btn-success">Submit to Zoho</button>
-                <button type="reset" class="btn btn-secondary">Reset</button>
-            </div>
-
-        </form>
-
-        <!-- Raw JSON output for debugging -->
-        <!-- <h2 class="mt-4">Raw extracted JSON (with edits)</h2>
+      <!-- Raw JSON output for debugging -->
+      <!-- <h2 class="mt-4">Raw extracted JSON (with edits)</h2>
         <pre id="jsonOutput" class="border p-3"></pre> -->
-
     </main>
-</body>
+  </body>
 </html>
