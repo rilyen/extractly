@@ -7,8 +7,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com._6.extractly.dto.LoginRequest;
@@ -16,6 +18,7 @@ import com._6.extractly.dto.RegisterRequest;
 import com._6.extractly.models.Role;
 import com._6.extractly.models.User;
 import com._6.extractly.repositories.UserRepository;
+// import com._6.extractly.service.EmailVerificationService;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -24,6 +27,7 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    // private final EmailVerificationService emailVerificationService;
 
     // temporary hardcoded admin domain for authentication
     private static final String ADMIN_DOMAIN = "@aetherautomation.com";
@@ -31,7 +35,8 @@ public class AuthController {
     private static final String EMAIL_REGEX = "^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$";
 
     public AuthController(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    this.userRepository = userRepository;
+    // this.emailVerificationService = emailVerificationService;
     }
 
     @PostMapping("/register")
@@ -53,13 +58,20 @@ public class AuthController {
             return error("email", "Email already registered.");
         }
 
-        // determine role based on email domain
-        Role role = request.getEmail().toLowerCase().endsWith(ADMIN_DOMAIN) ? Role.ADMIN : Role.USER;
+        boolean isAdminDomain = request.getEmail().toLowerCase().endsWith(ADMIN_DOMAIN);
+        Role role = isAdminDomain ? Role.ADMIN : Role.USER;
+
         String hashedPassword = passwordEncoder.encode(request.getPassword());
+        // String token = java.util.UUID.randomUUID().toString();
+
         User user = new User(request.getEmail(), hashedPassword, role);
+        // user.setVerified(false);
+        // user.setVerificationToken(token);
         userRepository.save(user);
 
-        return ResponseEntity.ok(Map.of("message", "User registered successfully."));
+        // emailVerificationService.sendVerificationEmail(request.getEmail(), token);
+
+        return ResponseEntity.ok(Map.of("message", "Registration successful."));
     }
 
     @PostMapping("/login")
@@ -81,6 +93,7 @@ public class AuthController {
         User user = userOpt.get();
         session.setAttribute("email", user.getEmail());
         session.setAttribute("role", user.getRole().name());
+        // session.setAttribute("verified", user.isVerified());
 
         return ResponseEntity.ok(Map.of("message", "Login successful."));
     }
@@ -95,4 +108,16 @@ public class AuthController {
     private ResponseEntity<Map<String, String>> error(String field, String message) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(field, message));
     }
+
+    // @GetMapping("/verify")
+    // public String verify(@RequestParam String token) {
+    //     User user = userRepository.findByVerificationToken(token);
+    //     if (user == null) {
+    //         return "redirect:/verify-failed.html";
+    //     }
+    //     user.setVerified(true);
+    //     user.setVerificationToken(null);
+    //     userRepository.save(user);
+    //     return "redirect:/login.html";
+    // }
 }

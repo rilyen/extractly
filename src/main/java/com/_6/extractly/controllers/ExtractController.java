@@ -48,10 +48,14 @@ public class ExtractController {
     @GetMapping("/")
     public String index(HttpSession session) {
         String role = (String) session.getAttribute("role");
+        // Boolean verified = (Boolean) session.getAttribute("verified");
 
         if (role == null) {
             return "redirect:/login.html";
         }
+        // if (verified == null || !verified) {
+        //     return "display-view-only";
+        // }
 
         return "ADMIN".equals(role) ? "extract" : "display-view-only"; // CHANGED SOMETHING HERE FOR TESTING display ->
                                                                        // extract
@@ -246,6 +250,7 @@ public class ExtractController {
         String transcript;
         try {
             transcript = transcribe(file.getBytes());
+            System.out.println("=== TRANSCRIPT ===\n" + transcript);
         } catch (IOException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("{\"error\": \"" + e.getMessage() + "\"}");
@@ -424,6 +429,7 @@ public class ExtractController {
             if ("completed".equals(status)) {
                 return (String) pollResponse.get("text");
             }
+
             if ("error".equals(status)) {
                 throw new RuntimeException("Transcription failed: " + pollResponse.get("error"));
             }
@@ -431,3 +437,17 @@ public class ExtractController {
         }
     }
 }
+/*
+ * //Will need it later Each object in "Custom_Function_Outputs" represents one
+ * THEN row and must have exactly these keys:
+ * {
+ * "Standard_Function_Request" : true or false or null,
+ * skip this -> "Select_Trigger": number or null (the Trigger_Number of the IF
+ * this THEN belongs to),
+ * "Output_Application": "Zoho CRM,
+ * "Output_Description": string or null,
+ * "Output_Inclusions": string or null,
+ * "Output_Exclusions": string or null,
+ * "Estimated_Hours": number or null
+ * }
+ */
