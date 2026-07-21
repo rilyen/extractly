@@ -5,9 +5,15 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -15,9 +21,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpSession;
-
-import org.springframework.web.bind.annotation.PostMapping;
-
 import tools.jackson.databind.json.JsonMapper;
 
 @Controller
@@ -32,10 +35,14 @@ public class ExtractController {
     private String assemblyAiApiKey;
 
     // use to send HTTP request to Gemini and AssemblyAI's REST API
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     // use to convert into a valid JSON string
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
+
+    public ExtractController(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     // redirect or show page based on user role
     @GetMapping("/")
@@ -46,7 +53,8 @@ public class ExtractController {
             return "redirect:/login.html";
         }
 
-        return "ADMIN".equals(role) ? "display" : "display-view-only";
+        return "ADMIN".equals(role) ? "extract" : "display-view-only"; // CHANGED SOMETHING HERE FOR TESTING display ->
+                                                                       // extract
     }
 
     // Handles POST /extract
