@@ -27,7 +27,7 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    private final EmailVerificationService emailVerificationService;
+    // private final EmailVerificationService emailVerificationService;
 
     // temporary hardcoded admin domain for authentication
     private static final String ADMIN_DOMAIN = "@aetherautomation.com";
@@ -36,7 +36,7 @@ public class AuthController {
 
     public AuthController(UserRepository userRepository, EmailVerificationService emailVerificationService) {
     this.userRepository = userRepository;
-    this.emailVerificationService = emailVerificationService;
+    // this.emailVerificationService = emailVerificationService;
     }
 
     @PostMapping("/register")
@@ -62,16 +62,16 @@ public class AuthController {
         Role role = isAdminDomain ? Role.ADMIN : Role.USER;
 
         String hashedPassword = passwordEncoder.encode(request.getPassword());
-        String token = java.util.UUID.randomUUID().toString();
+        // String token = java.util.UUID.randomUUID().toString();
 
         User user = new User(request.getEmail(), hashedPassword, role);
-        user.setVerified(false);
-        user.setVerificationToken(token);
+        // user.setVerified(false);
+        // user.setVerificationToken(token);
         userRepository.save(user);
 
-        emailVerificationService.sendVerificationEmail(request.getEmail(), token);
+        // emailVerificationService.sendVerificationEmail(request.getEmail(), token);
 
-        return ResponseEntity.ok(Map.of("message", "Registration successful. Please check your email to verify your account."));
+        return ResponseEntity.ok(Map.of("message", "Registration successful."));
     }
 
     @PostMapping("/login")
@@ -93,7 +93,7 @@ public class AuthController {
         User user = userOpt.get();
         session.setAttribute("email", user.getEmail());
         session.setAttribute("role", user.getRole().name());
-        session.setAttribute("verified", user.isVerified());
+        // session.setAttribute("verified", user.isVerified());
 
         return ResponseEntity.ok(Map.of("message", "Login successful."));
     }
@@ -109,15 +109,15 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(field, message));
     }
 
-    @GetMapping("/verify")
-    public String verify(@RequestParam String token) {
-        User user = userRepository.findByVerificationToken(token);
-        if (user == null) {
-            return "redirect:/verify-failed.html";
-        }
-        user.setVerified(true);
-        user.setVerificationToken(null);
-        userRepository.save(user);
-        return "redirect:/login.html";
-    }
+    // @GetMapping("/verify")
+    // public String verify(@RequestParam String token) {
+    //     User user = userRepository.findByVerificationToken(token);
+    //     if (user == null) {
+    //         return "redirect:/verify-failed.html";
+    //     }
+    //     user.setVerified(true);
+    //     user.setVerificationToken(null);
+    //     userRepository.save(user);
+    //     return "redirect:/login.html";
+    // }
 }

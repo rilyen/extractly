@@ -19,8 +19,8 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
-    private boolean verified = false;
-    private String verificationToken;
+    // private boolean verified = false;
+    // private String verificationToken;
 
     public User() {}
 
@@ -58,16 +58,16 @@ public class User {
         this.role = role;
     }
 
-    public boolean isVerified() { 
-        return verified; 
-    }
-    public void setVerified(boolean verified) { 
-        this.verified = verified; 
-    }
-    public String getVerificationToken() { 
-        return verificationToken; 
-    }
-    public void setVerificationToken(String token) { 
-        this.verificationToken = token; 
-    }
+    // public boolean isVerified() { 
+    //     return verified; 
+    // }
+    // public void setVerified(boolean verified) { 
+    //     this.verified = verified; 
+    // }
+    // public String getVerificationToken() { 
+    //     return verificationToken; 
+    // }
+    // public void setVerificationToken(String token) { 
+    //     this.verificationToken = token; 
+    // }
 }

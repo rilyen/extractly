@@ -48,18 +48,16 @@ public class ExtractController {
     @GetMapping("/")
     public String index(HttpSession session) {
         String role = (String) session.getAttribute("role");
-        Boolean verified = (Boolean) session.getAttribute("verified");
+        // Boolean verified = (Boolean) session.getAttribute("verified");
 
         if (role == null) {
             return "redirect:/login.html";
         }
-        if (verified == null || !verified) {
-            return "display-view-only";
-        }
+        // if (verified == null || !verified) {
+        //     return "display-view-only";
+        // }
 
-        return "extract";
-        
-        // return "ADMIN".equals(role) ? "extract" : "display-view-only";
+        return "ADMIN".equals(role) ? "extract" : "display-view-only";
     }
 
     // Handles POST /extract
