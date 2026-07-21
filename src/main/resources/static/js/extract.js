@@ -67,7 +67,7 @@ async function extract() {
         // The mapping function
         // fillForm(lastJSON);
 
-        showJSON(lastJSON);
+        // showJSON(lastJSON);
 
         // fill the product dropdown and load the first product into the form
         selectProduct(lastJSON);
@@ -99,10 +99,10 @@ function parseGeminiResponse(data) {
         return JSON.parse(clean);
     } catch (err) {
         // show the raw text on the page so the failure point can be inspected
-        const output = document.getElementById('jsonOutput');
-        if (output) {
-            output.textContent = 'PARSE FAILED. Raw Gemini output below:\n\n' + raw;
-        }
+        // const output = document.getElementById('jsonOutput');
+        // if (output) {
+        //     output.textContent = 'PARSE FAILED. Raw Gemini output below:\n\n' + raw;
+        // }
         if (candidate.finishReason === 'MAX_TOKENS') {
             throw new Error('Gemini hit its output token limit, the JSON is cut off. Shorten the transcript or raise maxOutputTokens.');
         }
@@ -111,12 +111,12 @@ function parseGeminiResponse(data) {
 }
 
 // Print extracted JSON object into #jsonOutput block on the page
-function showJSON(obj) {
-    const output = document.getElementById('jsonOutput');
-    if (output) {
-        output.textContent = JSON.stringify(obj, null, 2);
-    }
-}
+// function showJSON(obj) {
+//     const output = document.getElementById('jsonOutput');
+//     if (output) {
+//         output.textContent = JSON.stringify(obj, null, 2);
+//     }
+// }
 
 // triggered by the "Submit File" button (still in progress)
 async function extractFromVideo() {
@@ -164,7 +164,7 @@ async function extractFromVideo() {
         lastJSON = JSON.parse(clean);
 
         // fillForm(lastJSON);
-        showJSON(lastJSON);
+        // showJSON(lastJSON);
         setStatus('Extraction complete. Review the JSON below.');
         // setStatus('Form has been filled. Review before submitting.');
     } catch (err) {
@@ -555,7 +555,7 @@ async function sendJsonToZoho() {
 
     // save edits from the form on screen before sending
     saveFormToProduct(currentProduct);
-    showJSON(lastJSON);
+    // showJSON(lastJSON);
 
     const res = await fetch('/send-to-service', {
         method: 'POST',
