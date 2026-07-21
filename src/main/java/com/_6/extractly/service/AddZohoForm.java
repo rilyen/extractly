@@ -29,13 +29,13 @@ public class AddZohoForm {
     }
 
     public Map<String, Object> sendInfo(Map<String, Object> extractData) {
-        Map<String, Object> payload = Map.of("data", extractData);
+        // Map<String, Object> payload = Map.of("data", extractData);
 
         Map<String, Object> response = restClient.post()
                 .uri(base_url + "/creator/v2.1/data/" + account_owner_name + "/" + app_link_name + "/form/"
                         + form_link_name)
                 .header("Authorization", "Zoho-oauthtoken " + token.getToken()).contentType(MediaType.APPLICATION_JSON)
-                .body(payload).retrieve().body(Map.class);
+                .body(extractData).retrieve().body(Map.class);
 
         return response;
     }

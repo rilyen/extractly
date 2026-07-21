@@ -78,35 +78,41 @@ public class ExtractController {
                 For date fields, use DD-MMM-YYYY format (example: 15-Mar-2026).
                 For hours fields, return a plain number with no units.
                 Do not invent values that are not supported by the transcript.
- 
+                "What_is_the_name_of_this_Product" should start with: TEST_G13_VS_(random word here)
+                "Delivery_Rate" has to be: "Normal", "Urgent", "Immediate" only
                 The top-level JSON object must have EXACTLY this structure:
- 
+                Deal ID is specified keep it exactly that
+                Deal Name has to be exactly as described
+                Product cost is in hours if money is in the transcript do not add that value here
+
                 {
-                  "Products": [ one product object per product discussed, in the order discussed ]
+                  "data": [ one product object per product discussed, in the order discussed ]
                 }
- 
+
                 Each product object must have EXACTLY this structure and these keys:
- 
+
                 {
-                  "Project": string or null,
-                  "Deal_ID": number or null,
-                  "Deal_Name_Account_Contact": string or null,
-                  "Product_Name": string or null,
-                  "Product_Description": string or null,
+
+                  "Deal_ID": "3869165000077927129",
+                  "Deal_Name": "3869165000077927129",
+                  "What_is_the_name_of_this_Product": string,
+                  "Product_Description1": string or null,
                   "Delivery_Rate": string,
                   "Service_Types": ["Custom Functions"],
                   "Automation_Triggers": array of trigger objects (see below),
                   "Standard_Function_Outputs": array of output objects (see below),
-                  "Total_Product_Cost_Hours": number or null,
-                  "Estimated_Duration_to_Implement_Days": number or null,
-                  "Reviewer_Approver": string or null,
+                  "Product_Cost": number or null,
+                  "Calculate_Hours": true,
+                  "Generate_Product_Description": true,
+                  "Estimated_Duration_to_Implement_days": number or null,
+
                   "Latest_Review_Date": string or null,
                   "Passed_IAT": boolean,
                   "General_Comments": string or null,
-                  "Task_ID": string or null,
-                  "User_Story_Created": boolean
+
+                  "User_Story_Created": boolean or null
                 }
- 
+
                 Each object in "Automation_Triggers" represents one IF row and must have exactly these keys:
                 {
                   "Trigger_Number": number (sequential, starting at 1),
@@ -115,28 +121,28 @@ public class ExtractController {
                   "Trigger_Event_Description": string or null (describe the trigger event in detail),
                   "Filters": string or null (multiple filters separated with ';'),
                   "Trigger_Assumptions": string or null,
-                  "Estimated_Hours": number or null
+                  "Hours": number or null
                 }
- 
+
                 Each object in "Standard_Function_Outputs" represents one THEN row and must have exactly these keys:
                 {
-                  "Select_Trigger": number or null (the Trigger_Number of the IF this THEN belongs to),
-                  "Standard_Services": string or null,
                   "Inclusions": string or null,
                   "Exclusions": string or null,
                   "Detailed_Description": string or null,
                   "Estimated_Hours": number or null
                 }
- 
+
+
+
                 Special field rules:
-                - "Product_Description": ALWAYS generate this field when the transcript describes any work
+                - "Product_Description1": ALWAYS generate this field when the transcript describes any work
                   to be delivered. Summarize what Aether will build for the client in your own words, phrased like
                   "Aether will create within the Client's Zoho CRM Application Workflows and custom functions that: ..."
                   Only use null if the transcript contains no deliverables at all.
-                - "Delivery_Rate": use "Normal" unless the transcript clearly states a different delivery rate.
+
                 - "Service_Types": always output exactly ["Custom Functions"] for every product,
                   regardless of what the transcript says.
- 
+
                 Rules for identifying Automation_Triggers and Standard_Function_Outputs:
                 - Triggers are almost never stated with literal "IF/THEN" wording. Treat ANY
                   event-then-action pattern in the transcript as a trigger and output pair.
@@ -157,14 +163,14 @@ public class ExtractController {
                   in the SAME product.
                 - Only use empty arrays if the transcript truly contains no event-then-action
                   behaviour anywhere for that product.
- 
+
                 Rules for multiple products:
                 - Fields discussed once but applying to the whole engagement (example: Deal_ID,
                   Deal_Name_Account_Contact, Project) should be repeated in every product object.
                 - Fields discussed per product (example: Product_Name, hours, delivery rate,
                   reviewer, triggers) belong only to the product they were discussed for.
                 - Do not merge triggers, outputs, hours, or comments from different products together.
- 
+
                 Transcript:
                 """
                 + transcript;
@@ -232,6 +238,7 @@ public class ExtractController {
         String transcript;
         try {
             transcript = transcribe(file.getBytes());
+            System.out.println("=== TRANSCRIPT ===\n" + transcript);
         } catch (IOException | InterruptedException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("{\"error\": \"" + e.getMessage() + "\"}");
@@ -244,60 +251,107 @@ public class ExtractController {
         // Instructions given to Gemini with transcript text appended at the end
         String prompt = """
                 You are a data extraction assistant.
-                Read the transcript below and extract values for each of the following fields.
-                Return ONLY a valid JSON object — no markdown, no explanation, no code fences.
+                Read the transcript below and extract every product discussed for the Product Creator form described here.
+                A single transcript can describe MULTIPLE products. Create one product object per distinct
+                product or deliverable discussed.
+                Return ONLY a valid JSON object, no markdown, no explanation, no code fences.
                 If a field is not mentioned in the transcript, set its value to null.
-                For boolean fields (checkboxes / yes-no), use true or false.
-                For date fields, use YYYY-MM-DD format if possible.
+                For boolean fields (checkboxes), use true or false.
+                For date fields, use DD-MMM-YYYY format (example: 15-Mar-2026).
+                For hours fields, return a plain number with no units.
+                Do not invent values that are not supported by the transcript.
+                "What_is_the_name_of_this_Product" should start with: TEST_G13_VS_(random word here)
+                "Delivery_Rate" has to be: "Normal", "Urgent", "Immediate" only
+                The top-level JSON object must have EXACTLY this structure:
+                Deal ID is specified keep it exactly that
+                Deal Name has to be exactly as described
+                Product cost is in hours if money is in the transcript do not add that value here
+
+                {
+                  "data": [ one product object per product discussed, in the order discussed ]
+                }
+
+                Each product object must have EXACTLY this structure and these keys:
+
+                {
+
+                  "Deal_ID": "3869165000077927129",
+                  "Deal_Name": "3869165000077927129",
+                  "What_is_the_name_of_this_Product": string,
+                  "Product_Description1": string or null,
+                  "Delivery_Rate": string,
+                  "Service_Types": ["Custom Functions"],
+                  "Automation_Triggers": array of trigger objects (see below),
+                  "Standard_Function_Outputs": array of output objects (see below),
+                  "Product_Cost": number or null,
+                  "Calculate_Hours": true,
+                  "Generate_Product_Description": true,
+                  "Estimated_Duration_to_Implement_days": number or null,
+
+                  "Latest_Review_Date": string or null,
+                  "Passed_IAT": boolean,
+                  "General_Comments": string or null,
+
+                  "User_Story_Created": boolean or null
+                }
+
+                Each object in "Automation_Triggers" represents one IF row and must have exactly these keys:
+                {
+                  "Trigger_Number": number (sequential, starting at 1),
+                  "Name_of_Trigger_Application": string or null,
+                  "Is_the_application_a_Zoho_App": "Yes" or "No" or null,
+                  "Trigger_Event_Description": string or null (describe the trigger event in detail),
+                  "Filters": string or null (multiple filters separated with ';'),
+                  "Trigger_Assumptions": string or null,
+                  "Hours": number or null
+                }
+
+                Each object in "Standard_Function_Outputs" represents one THEN row and must have exactly these keys:
+                {
+                  "Inclusions": string or null,
+                  "Exclusions": string or null,
+                  "Detailed_Description": string or null,
+                  "Estimated_Hours": number or null
+                }
+
+
 
                 Special field rules:
-                - "Integration": extract the company or deal name mentioned in the transcript as a plain string (e.g. "Towels Direct"). Do not invent a value.
-                - "Stage": must be exactly one of these options or null: "Internal Testing", "Choice 2", "Choice 3", "Won"
-                - "projectClass": must be exactly one of these options or null: "Small (one week)", "Medium (multi week)", "Large (over X weeks)"
+                - "Product_Description1": ALWAYS generate this field when the transcript describes any work
+                  to be delivered. Summarize what Aether will build for the client in your own words, phrased like
+                  "Aether will create within the Client's Zoho CRM Application Workflows and custom functions that: ..."
+                  Only use null if the transcript contains no deliverables at all.
 
-                Fields to extract:
-                - Integration
-                - Assigned_Designer
-                - Deal_Name
-                - Resources_to_be_used_to_design_and_links
-                - ProjectID
-                - Design_Link
-                - Company_website
-                - What_is_the_company_about_for_context
-                - What_is_the_purpose_of_this_product"
-                - Project_Cost_Modifier
-                - Stage
-                - Resources_to_be_used_to_design_and_links1
-                - Review_Project_Docs_and_Requirements
-                - Draft_Roadmap
-                - Customer_Feedback_meeting1
-                - Update_Roadmap
-                - Create_Update_Userstories1
-                - Internal_Review_scope_time_budget
-                - Submitted_to_Customer_for_Approval
-                - Allocated_Budget
-                - Used_Hours
-                - Project_Class
-                - Production_Notes
-                - Customer_Concerns
-                - On_track_with_IATs
-                - On_track_with_Emails_Videos
-                - FLAG_as_Problem
-                - Dev_Start_Date
-                - Design_Due_Date
-                - Design_Completion_Date
-                - Closing_Date
-                - Projected_Delivery_Date1
-                - Negotiated_Delivery_Due_Date
-                - Projected_Completion_Date1
-                - SOW_Estimated_Time
-                - Dev_Estimated_Time
-                - QC_Turnaround_Time
-                - Full_Project_IAT
-                - QC_Testing
-                - Demo_Video_Recorded
-                - Edit_Package_Video
-                - Clean_up_database_prep_for_delivery
+                - "Service_Types": always output exactly ["Custom Functions"] for every product,
+                  regardless of what the transcript says.
+
+                Rules for identifying Automation_Triggers and Standard_Function_Outputs:
+                - Triggers are almost never stated with literal "IF/THEN" wording. Treat ANY
+                  event-then-action pattern in the transcript as a trigger and output pair.
+                  Phrases like "when...", "whenever...", "once...", "after...", "as soon as...",
+                  "every time...", "on submission...", "at the end of the month..." all signal triggers.
+                - The EVENT part becomes one Automation_Triggers row.
+                  Example: "when a customer places an order" becomes a trigger with
+                  Trigger_Event_Description "A customer places an order".
+                - The ACTION part becomes one Standard_Function_Outputs row linked to that trigger
+                  via "Select_Trigger".
+                  Example: "...send a confirmation email" becomes an output with
+                  Detailed_Description "Send a confirmation email to the customer".
+                - One trigger can have multiple outputs. Create one output row per distinct action.
+                - Conditions restricting the event ("only for orders over $500") belong in "Filters".
+                - Unstated things you must presume for the automation to work belong in "Trigger_Assumptions".
+                - Number triggers sequentially starting at 1 WITHIN each product. Trigger numbering
+                  restarts for every product, and "Select_Trigger" always refers to a Trigger_Number
+                  in the SAME product.
+                - Only use empty arrays if the transcript truly contains no event-then-action
+                  behaviour anywhere for that product.
+
+                Rules for multiple products:
+                - Fields discussed once but applying to the whole engagement (example: Deal_ID,
+                  Deal_Name_Account_Contact, Project) should be repeated in every product object.
+                - Fields discussed per product (example: Product_Name, hours, delivery rate,
+                  reviewer, triggers) belong only to the product they were discussed for.
+                - Do not merge triggers, outputs, hours, or comments from different products together.
 
                 Transcript:
                 """
@@ -336,7 +390,6 @@ public class ExtractController {
         }
     }
 
-    
     private String transcribe(byte[] fileBytes) throws InterruptedException {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", assemblyAiApiKey);
@@ -364,6 +417,7 @@ public class ExtractController {
             if ("completed".equals(status)) {
                 return (String) pollResponse.get("text");
             }
+
             if ("error".equals(status)) {
                 throw new RuntimeException("Transcription failed: " + pollResponse.get("error"));
             }
@@ -371,3 +425,17 @@ public class ExtractController {
         }
     }
 }
+/*
+ * //Will need it later Each object in "Custom_Function_Outputs" represents one
+ * THEN row and must have exactly these keys:
+ * {
+ * "Standard_Function_Request" : true or false or null,
+ * skip this -> "Select_Trigger": number or null (the Trigger_Number of the IF
+ * this THEN belongs to),
+ * "Output_Application": "Zoho CRM,
+ * "Output_Description": string or null,
+ * "Output_Inclusions": string or null,
+ * "Output_Exclusions": string or null,
+ * "Estimated_Hours": number or null
+ * }
+ */
