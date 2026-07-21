@@ -57,7 +57,9 @@ public class ExtractController {
             return "display-view-only";
         }
 
-        return "ADMIN".equals(role) ? "extract" : "display-view-only";
+        return "extract";
+        
+        // return "ADMIN".equals(role) ? "extract" : "display-view-only";
     }
 
     // Handles POST /extract
