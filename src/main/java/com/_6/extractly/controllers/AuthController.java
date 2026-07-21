@@ -18,7 +18,7 @@ import com._6.extractly.dto.RegisterRequest;
 import com._6.extractly.models.Role;
 import com._6.extractly.models.User;
 import com._6.extractly.repositories.UserRepository;
-import com._6.extractly.service.EmailVerificationService;
+// import com._6.extractly.service.EmailVerificationService;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -34,7 +34,7 @@ public class AuthController {
 
     private static final String EMAIL_REGEX = "^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$";
 
-    public AuthController(UserRepository userRepository, EmailVerificationService emailVerificationService) {
+    public AuthController(UserRepository userRepository) {
     this.userRepository = userRepository;
     // this.emailVerificationService = emailVerificationService;
     }
