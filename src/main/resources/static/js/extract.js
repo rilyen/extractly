@@ -18,7 +18,8 @@ let currentProduct = 0;
 
 // triggered by the "Extract JSON" button
 async function extract() {
-    const transcript = document.getElementById('transcript').value.trim();
+    const formData = new FormData();
+    formData.append('transcript', document.getElementById('transcript').value.trim());
 
     if (!transcript) {
         setStatus('Paste a transcript first.');
@@ -32,8 +33,7 @@ async function extract() {
         // Backend controller returns a JSON object response
         const res = await fetch('/extract', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ transcript: transcript })
+            body: formData,
         });
 
         // parse response body as JSON
@@ -120,7 +120,7 @@ function parseGeminiResponse(data) {
 //     }
 // }
 
-// triggered by the "Submit File" button (still in progress)
+// triggered by the "Submit File" button
 async function extractFromVideo() {
 
     const fileInput = document.getElementById("videoInput");
@@ -131,13 +131,13 @@ async function extractFromVideo() {
         return;
     }
 
-    setStatus('Extracting data...');
+    setStatus('Transcribing video... this may take a few minutes.');
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-        const res = await fetch("/extract-from-video", {
+        const res = await fetch("/extract", {
             method: "POST",
             body: formData,
         });
@@ -150,27 +150,12 @@ async function extractFromVideo() {
             throw new Error(data.error || 'Request failed.');
         }
 
-        // Check to make sure Gemini returned a candidate result.
-        if (!data.candidates || !data.candidates[0]) {
-            throw new Error('Gemini returned no result. Try again or shorten the transcript.');
-        }
+        // Place the transcript directly into your text box
+        document.getElementById("transcript").value = data.transcript;
 
-        const raw = data.candidates[0].content.parts[0].text;
-        // log raw text to inspect formatting issues
-        console.log('Raw Gemini text:', raw);
-
-        // strip markdown code so the string can be parsed as valid JSON and trim whitespace
-        const clean = raw.replace(/```json|```/g, '').trim();
-
-        // convert clean string to JS object
-        lastJSON = JSON.parse(clean);
-
-        // fillForm(lastJSON);
-        // showJSON(lastJSON);
-        setStatus('Extraction complete. Review the JSON below.');
-        // setStatus('Form has been filled. Review before submitting.');
+        setStatus('Transcription complete. Review the text below.');
     } catch (err) {
-        console.error('Video extraction failed:', err);
+        console.error('Video transcription failed:', err);
         setStatus(err.message || 'Something went wrong.');
     }
 
