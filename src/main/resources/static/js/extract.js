@@ -11,6 +11,8 @@ const Checkboxes = ["Passed_IAT", "User_Story_Created"];
 
 const DateFields = ["Latest_Review_Date"];
 
+const Dropdowns = ["Project", "DealNameAccountContact", "DeliveryRate", "ReviewerApprover"];
+
 // which product is currently loaded into the form.
 // Ive assigned them (and im using them) as an index and treated them as sigle objects
 let currentProduct = 0;
@@ -44,30 +46,10 @@ async function extract() {
             throw new Error(data.error || 'Request failed.');
         }
 
-        // // Check to make sure Gemini returned a candidate result.
-        // if (!data.candidates || !data.candidates[0]) {
-        //     throw new Error('Gemini returned no result. Try again or shorten the transcript.');
-        // }
-        // const raw = data.candidates[0].content.parts[0].text;
-        // // log raw text to inspect formatting issues
-        // console.log('Raw Gemini text:', raw);
-
-        // // strip markdown code so the string can be parsed as valid JSON and trim whitespace
-        // const clean = raw.replace(/```json|```/g, '').trim();
-
         // convert clean string to JS object
         lastJSON = parseGeminiResponse(data);
 
-        //   console.log('data:', lastJSON.data[0]);
-        // display the parsed result with 2-space indentation
-        // enable action buttons
-        // document.getElementById('jsonOutput').textContent = JSON.stringify(lastJSON, null, 2);
-
-        // Pushes the values from the JSON object into the form fields. 
-        // The mapping function
-        // fillForm(lastJSON);
-
-        // showJSON(lastJSON);
+        showJSON(lastJSON);
 
         // fill the product dropdown and load the first product into the form
         selectProduct(lastJSON);
@@ -100,11 +82,6 @@ function parseGeminiResponse(data) {
         // convert clean string to JS object
         return JSON.parse(clean);
     } catch (err) {
-        // show the raw text on the page so the failure point can be inspected
-        // const output = document.getElementById('jsonOutput');
-        // if (output) {
-        //     output.textContent = 'PARSE FAILED. Raw Gemini output below:\n\n' + raw;
-        // }
         if (candidate.finishReason === 'MAX_TOKENS') {
             throw new Error('Gemini hit its output token limit, the JSON is cut off. Shorten the transcript or raise maxOutputTokens.');
         }
@@ -113,12 +90,12 @@ function parseGeminiResponse(data) {
 }
 
 // Print extracted JSON object into #jsonOutput block on the page
-// function showJSON(obj) {
-//     const output = document.getElementById('jsonOutput');
-//     if (output) {
-//         output.textContent = JSON.stringify(obj, null, 2);
-//     }
-// }
+function showJSON(obj) {
+    const output = document.getElementById('jsonOutput');
+    if (output) {
+        output.textContent = JSON.stringify(obj, null, 2);
+    }
+}
 
 // triggered by the "Submit File" button (still in progress)
 async function extractFromVideo() {
@@ -165,10 +142,9 @@ async function extractFromVideo() {
         // convert clean string to JS object
         lastJSON = JSON.parse(clean);
 
-        // fillForm(lastJSON);
-        // showJSON(lastJSON);
+        showJSON(lastJSON);
+        selectProduct(lastJSON);
         setStatus('Extraction complete. Review the JSON below.');
-        // setStatus('Form has been filled. Review before submitting.');
     } catch (err) {
         console.error('Video extraction failed:', err);
         setStatus(err.message || 'Something went wrong.');
@@ -350,6 +326,7 @@ function CreateTextInput(entry) {
     input.type = 'text';
     input.className = 'form-control';
     if (entry != null) input.value = entry;
+    input.oninput = saveEdits;              // save into the JSON whenever the user types in this cell
     td.appendChild(input);
     return td;
 }
@@ -361,6 +338,7 @@ function CreateTextArea(entry) {
     area.className = 'form-control';
     area.rows = 2;
     if (entry != null) area.value = entry;
+    area.oninput = saveEdits;               // save into the JSON whenever the user types in this cell
     td.appendChild(area);
     return td;
 }
@@ -375,6 +353,7 @@ function makeYesNoCell(entry) {
         '<option value="Yes">Yes</option>' +
         '<option value="No">No</option>';
     if (entry != null) select.value = entry;
+    select.onchange = saveEdits;            // save into the JSON when the user picks Yes/No
     td.appendChild(select);
     return td;
 }
@@ -389,10 +368,39 @@ function DeleteCellButton() {
     button.onclick = function () {
         const row = button.parentElement.parentElement;
         row.remove();
+        saveEdits();                        // save the JSON again now that the row is gone
     };
     td.appendChild(button);
     return td;
 }
+
+
+// Runs once when the page loads.
+// Adds a listener to every form field so that any edit the user makes is saved into lastJSON right away
+function FieldListner() {
+    textField.forEach(key => addSaveListener(key));
+    Checkboxes.forEach(key => addSaveListener(key));
+    DateFields.forEach(key => addSaveListener(key));
+    Dropdowns.forEach(key => addSaveListener(key));
+}
+
+// attaches the save function to one field, found by its id
+function addSaveListener(id) {
+    const element = document.getElementById(id);
+    if (!element) return;
+    element.oninput = saveEdits;            // fires while typing in a text box
+    element.onchange = saveEdits;           // fires for checkboxes and dropdowns
+}
+
+// Saves the form into the JSON and prints the updated JSON so we can review it
+function saveEdits() {
+    saveFormToProduct(currentProduct);
+    showJSON(lastJSON);
+    console.log('Updated JSON after edit:', JSON.stringify(lastJSON, null, 2));
+}
+
+// run the listener
+window.addEventListener('DOMContentLoaded', FieldListner);
 
 
 // Function that saves any changes made to the web pages fields so that when we flip to different product the edits still remain
@@ -557,12 +565,13 @@ async function sendJsonToZoho() {
 
     // save edits from the form on screen before sending
     saveFormToProduct(currentProduct);
-    // showJSON(lastJSON);
+    showJSON(lastJSON);
+    console.log('JSON being sent to Zoho:', JSON.stringify(lastJSON, null, 2));
 
     const res = await fetch('/send-to-service', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: sendJson
+        body: lastJSON
 
     });
     const result = await res.json();
