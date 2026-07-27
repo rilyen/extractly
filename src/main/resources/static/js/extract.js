@@ -61,7 +61,7 @@ async function extract() {
         //   console.log('data:', lastJSON.data[0]);
         // display the parsed result with 2-space indentation
         // enable action buttons
-        document.getElementById('jsonOutput').textContent = JSON.stringify(lastJSON, null, 2);
+        // document.getElementById('jsonOutput').textContent = JSON.stringify(lastJSON, null, 2);
 
         // Pushes the values from the JSON object into the form fields. 
         // The mapping function
@@ -568,3 +568,32 @@ async function sendJsonToZoho() {
     const result = await res.json();
     setStatus(result.code === 3000 ? 'Message sent successfully' : 'Fail: ' + JSON.stringify(result));
 }
+
+async function getProjectNameID() {
+    const res = await fetch('/deals');
+    const deal = await res.json();
+
+    const deals = new Map();
+
+    deal.data.forEach(d => {
+        if (!d.Deal_ID || !d.Deal_Name || !d.Deal_Name.Account_Name) return;
+        if (!deals.has(d.Deal_ID)) {
+            deals.set(d.Deal_ID, d.Deal_Name.Account_Name);
+        }
+    });
+
+    const select = document.getElementById('dealSelect');
+    select.innerHTML = '<option value="">-- Select -- </option>';
+    deals.forEach((name, id) => {
+        select.innerHTML += `<option value ="${id}">${name}</option>`;
+    });
+
+    document.getElementById('dealSelect').addEventListener('change', (event) => {
+        const id = document.getElementById('Deal_ID');
+        if (id) {
+            id.value = event.target.value;
+        }
+    });
+}
+
+getProjectNameID();
