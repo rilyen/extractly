@@ -1,6 +1,5 @@
 // holds most recently extracted JSON object (the whole { Products: [...] })
 let lastJSON = null;
-var sendJson = null;
 // Fields stored in arrays for mapping elements of same type
 // maps each JSON key to the form element's id.
 const textField = ["Deal_ID", "What_is_the_name_of_this_Product", "Product_Description1",
@@ -10,8 +9,8 @@ const textField = ["Deal_ID", "What_is_the_name_of_this_Product", "Product_Descr
 const Checkboxes = ["Passed_IAT", "User_Story_Created"];
 
 const DateFields = ["Latest_Review_Date"];
-
-const Dropdowns = ["Project", "DealNameAccountContact", "DeliveryRate", "ReviewerApprover"];
+//DeliveryRate needed
+const Dropdowns = ["ReviewerApprover"];
 
 // which product is currently loaded into the form.
 // Ive assigned them (and im using them) as an index and treated them as sigle objects
@@ -74,8 +73,6 @@ function parseGeminiResponse(data) {
     // log raw text and finish reason to inspect formatting issues
     console.log('Gemini finishReason:', candidate.finishReason);
     console.log('Raw Gemini text:', raw);
-    sendJson = raw;
-    console.log(sendJson);
     // strip markdown code fences so the string can be parsed as valid JSON
     const clean = raw.replace(/```json|```/g, '').trim();
     try {
@@ -185,7 +182,7 @@ function ProductChosen() {
     saveFormToProduct(currentProduct);          // Function I wrote below that saves any changes/ edits on current product before switching to a different product
     const productSelected = document.getElementById('productSelected');
     currentProduct = parseInt(productSelected.value, 10);
-    fillForm(lastJSON.Products[currentProduct]);
+    fillForm(lastJSON.data[currentProduct]);
 }
 
 
@@ -233,8 +230,10 @@ function fillForm(map) {
     // Map THE dropdown fields. It is set only if the value is one of the allowed options. Otherwise, it is left as the default option
     setDropdown("Project", map.Project);
     setDropdown("DealNameAccountContact", map.Deal_Name_Account_Contact);
-    setDropdown("DeliveryRate", map.Delivery_Rate);
-    setDropdown("ReviewerApprover", map.Reviewer_Approver);
+    const service = document.getElementById("Service_Types");
+    if (service) {
+        service.value = "Custom Functions"
+    }
 
     // creates the IFs and THENs tables for the product
     AutomationTriggerTable(map.Automation_Triggers || []);
@@ -396,7 +395,7 @@ function addSaveListener(id) {
 function saveEdits() {
     saveFormToProduct(currentProduct);
     showJSON(lastJSON);
-    console.log('Updated JSON after edit:', JSON.stringify(lastJSON, null, 2));
+    //console.log('Updated JSON after edit:', JSON.stringify(lastJSON, null, 2));
 }
 
 // run the listener
@@ -437,7 +436,7 @@ function saveFormToProduct(index) {
     // the drop downs
     product.Project = readValue("Project");
     product.Deal_Name_Account_Contact = readValue("DealNameAccountContact");
-    product.Delivery_Rate = readValue("DeliveryRate");
+    product.Delivery_Rate = readValue("Delivery_Rate");
     product.Reviewer_Approver = readValue("ReviewerApprover");
     product.Service_Types = ["Custom Functions"];
 
@@ -544,7 +543,9 @@ function copyJSON() {
 function setStatus(msg) {
     document.getElementById('status').textContent = msg;
 }
-
+function setZohoStatus(msg) {
+    document.getElementById('zohoStatus').textContent = msg;
+}
 // logout
 async function logout() {
     try {
@@ -565,17 +566,59 @@ async function sendJsonToZoho() {
 
     // save edits from the form on screen before sending
     saveFormToProduct(currentProduct);
-    showJSON(lastJSON);
-    console.log('JSON being sent to Zoho:', JSON.stringify(lastJSON, null, 2));
 
-    const res = await fetch('/send-to-service', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: lastJSON
+    const dealId = document.getElementById('dealSelect').value;
+    if (!dealId) {
+        setStatus('Select a deal first.');
+        return;
+    }
 
-    });
-    const result = await res.json();
-    setStatus(result.code === 3000 ? 'Message sent successfully' : 'Fail: ' + JSON.stringify(result));
+    lastJSON.data.forEach(product => {
+        product.Deal_ID = dealId;
+        product.Deal_Name = dealId;
+    })
+
+    const payload = { data: lastJSON.data };
+    setZohoStatus('Sending to Zoho...');
+
+    try {
+        const res = await fetch('/send-to-service', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+
+        });
+        const result = await res.json();
+        setZohoStatus(result.code === 3000 ? 'Message sent successfully' : 'Fail: ' + JSON.stringify(result));
+    } catch (err) {
+        setZohoStatus('Error: ' + err.message);
+    }
+
+
+}
+async function zohoPreview() {
+    if (!lastJSON) {
+        setStatus('Enter the Transcript.');
+        return;
+    }
+
+    // save edits from the form on screen before sending
+    saveFormToProduct(currentProduct);
+
+    const dealId = document.getElementById('dealSelect').value;
+    if (!dealId) {
+        setStatus('Select a deal first.');
+        return;
+    }
+
+    lastJSON.data.forEach(product => {
+        product.Deal_ID = dealId;
+        product.Deal_Name = dealId;
+    })
+
+    const payload = { data: lastJSON.data };
+    console.log(JSON.stringify(payload, null, 2));
+
 }
 
 async function getProjectNameID() {

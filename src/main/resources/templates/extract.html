@@ -56,6 +56,9 @@
             <button onclick="copyJSON()" class="btn btn-outline-secondary">
               Copy JSON
             </button>
+            <button onclick="zohoPreview()" class="btn btn-secondary">Preview JSON</button>
+              
+            </button>
             <span id="status" class="ms-2 text-muted"></span>
           </div>
         </div>
@@ -120,8 +123,8 @@
           <label for="DeliveryRate" class="form-label">Delivery Rate *</label>
           <select id="Delivery_Rate" class="form-select">
             <option value="Normal">Normal</option>
-            <option value="Rush">Urgent</option>
-            <option value="Slow">Immediate</option>
+            <option value="Urgent">Urgent</option>
+            <option value="Immediate">Immediate</option>
           </select>
         </div>
 
@@ -280,12 +283,13 @@
             Submit to Zoho
           </button>
           <button type="reset" class="btn btn-secondary">Reset</button>
+          <span id="zohoStatus" class="ms-2 text-muted"></span>
         </div>
       </form>
 
       <!-- Raw JSON output for debugging -->
-      <h2 class="mt-4">Raw extracted JSON (with edits)</h2>
-      <pre id="jsonOutput" class="border p-3"></pre>
+      <!-- <h2 class="mt-4">Raw extracted JSON (with edits)</h2>
+      <pre id="jsonOutput" class="border p-3"></pre> -->
     </main>
   </body>
 </html>
