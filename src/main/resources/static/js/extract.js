@@ -16,6 +16,71 @@ const Dropdowns = ["ReviewerApprover"];
 // Ive assigned them (and im using them) as an index and treated them as sigle objects
 let currentProduct = 0;
 
+// On page load, ask server whether a Gemini key is already saved for this session and
+// indicate in the status line. Only returns boolean (not the key)
+document.addEventListener('DOMContentLoaded', () => {
+    refreshGeminiKeyStatus();
+})
+
+async function refreshGeminiKeyStatus() {
+    const statusEl = document.getElementById('geminiKeyStatus');
+    try {
+        const res = await fetch('/gemini-key/status');
+        const data = await res.json();
+        statusEl.textContent = data.hasKey 
+        ? 'A Gemini API key is saved for this session.' 
+        : 'No Gemini API key saved yet. Paste Gemini API key and click "Save Key".';
+    } catch (err) {
+        statusEl.textContent = 'Could not check Gemini API key status.';
+    }
+}
+
+// triggered by the "Save Key" button. Sends whatever is in the field to the server (POST /gemini-key),
+// which stores it in this login session. On success, the field is cleared immediately so the plaintext key
+// is no longer present in the page. Only the server session holds it. Paste a different key and click
+// "Save Key" again anytime in the same session to replace it.
+async function saveGeminiKey() {
+    const input = document.getElementById('geminiApiKey');
+    const geminiApiKey = input.value.trim();
+
+    if (!geminiApiKey) {
+        setStatus('Paste a Gemini API key first.');
+        return;
+    }
+
+    try {
+        const res = await fetch('/gemini-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ geminiApiKey: geminiApiKey})
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Could not save Gemini API key.');
+        }
+
+        // Clear the field now that the key is in the session
+        input.value = '';
+        setStatus('Gemini API key saved for this session.');
+        refreshGeminiKeyStatus();
+    } catch (err) {
+        setStatus('Error: ' + err.message);
+        console.error(err);
+    }
+}
+
+// triggered by the "Clear key" button. Empties the field and tells the server to drop
+// the key from the session (POST /gemini-key/clear), without logging the user out
+async function clearGeminiKey() {
+    document.getElementById('geminiApiKey').value = '';
+    try {
+        await fetch('/gemini-key/clear', { method: 'POST' });
+    } catch (err) {
+        console.error('Failed to clear Gemini API key on the server: ', err);
+    }
+    setStatus('Gemini API key cleared.');
+    refreshGeminiKeyStatus();
+}
 
 // triggered by the "Extract JSON" button
 async function extract() {
