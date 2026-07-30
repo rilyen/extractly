@@ -13,10 +13,10 @@ const DateFields = ["Latest_Review_Date"];
 const Dropdowns = ["ReviewerApprover"];
 
 // Default
-const DEFAULT_STANDARD_SERVICE = "Unique Automation (or service not listed below)";
+const DEFAULT_STANDARD_SERVICE = "4003860000000356135";
 
 // Standard service names loaded from Zoho instead of hardcoding them
-let StandardServicesOptions = [DEFAULT_STANDARD_SERVICE];
+//let StandardServicesOptions = [DEFAULT_STANDARD_SERVICE];
 
 // tracks the fetch so extract() / extractFromVideo() can wait for it
 let standardServicesReady = null;
@@ -26,16 +26,18 @@ async function loadStandardServices() {
         .then(res => res.json())
         .then(data => {
             const products = (data && data.data) || [];
-            const names = products
-                .map(p => p.Output_Name)
-                .filter(name => name != null && name !== '');
-            StandardServicesOptions = [...new Set(names)];
-
-            // the default option
-            if (!StandardServicesOptions.includes(DEFAULT_STANDARD_SERVICE)) {
-                StandardServicesOptions.push(DEFAULT_STANDARD_SERVICE);
-            }
+            //console.log("Products: " + products);
+            StandardServicesOptions = new Map();
+            products.forEach(p => {
+                if (!p.ID) {
+                    return;
+                }
+                if (!StandardServicesOptions.has(p.ID)) {
+                    StandardServicesOptions.set(p.ID, p.Output_Name);
+                }
+            });
         })
+        .then(() => console.log('Standard Services' + StandardServicesOptions))
         .catch(err => {
             console.error('Could not load standard services, using fallback only:', err);
         });
@@ -56,9 +58,9 @@ async function refreshGeminiKeyStatus() {
     try {
         const res = await fetch('/gemini-key/status');
         const data = await res.json();
-        statusEl.textContent = data.hasKey 
-        ? 'A Gemini API key is saved for this session.' 
-        : 'No Gemini API key saved yet. Paste Gemini API key and click "Save Key".';
+        statusEl.textContent = data.hasKey
+            ? 'A Gemini API key is saved for this session.'
+            : 'No Gemini API key saved yet. Paste Gemini API key and click "Save Key".';
     } catch (err) {
         statusEl.textContent = 'Could not check Gemini API key status.';
     }
@@ -81,7 +83,7 @@ async function saveGeminiKey() {
         const res = await fetch('/gemini-key', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ geminiApiKey: geminiApiKey})
+            body: JSON.stringify({ geminiApiKey: geminiApiKey })
         });
         const data = await res.json();
         if (!res.ok) {
@@ -470,14 +472,16 @@ function makeServiceDropdownCell(entry) {
 
     // build one <option> per known standard service
     let optionsHtml = '';
-    StandardServicesOptions.forEach(name => {
-        optionsHtml += '<option value="' + name + '">' + name + '</option>';
+    StandardServicesOptions.forEach((name, id) => {
+        optionsHtml += `<option value = "${id}" >  ${name}  </option>`;
     });
     select.innerHTML = optionsHtml;
 
+    const saveId = entry && typeof entry === 'object' ? entry.ID : entry;
+
     // pick the matching option, or fall back to the default catch-all
-    if (entry != null && StandardServicesOptions.includes(entry)) {
-        select.value = entry;
+    if (saveId != null && StandardServicesOptions.has(saveId)) {
+        select.value = saveId;
     } else {
         select.value = DEFAULT_STANDARD_SERVICE;
     }
