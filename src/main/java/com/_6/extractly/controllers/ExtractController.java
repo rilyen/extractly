@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpSession;
 import tools.jackson.databind.json.JsonMapper;
@@ -26,243 +25,250 @@ import tools.jackson.databind.json.JsonMapper;
 @Controller
 public class ExtractController {
 
-    // API key for Gemini
-    @Value("${gemini.api.key}")
-    private String geminiApiKey;
+  // API key for Gemini
+  @Value("${gemini.api.key}")
+  private String geminiApiKey;
 
-    // API key for AssemblyAI
-    @Value("${assemblyai.api.key}")
-    private String assemblyAiApiKey;
+  // API key for AssemblyAI
+  @Value("${assemblyai.api.key}")
+  private String assemblyAiApiKey;
 
-    // use to send HTTP request to Gemini and AssemblyAI's REST API
-    private final RestTemplate restTemplate;
+  // use to send HTTP request to Gemini and AssemblyAI's REST API
+  private final RestTemplate restTemplate;
 
-    // use to convert into a valid JSON string
-    private final JsonMapper jsonMapper = JsonMapper.builder().build();
+  // use to convert into a valid JSON string
+  private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
-    public ExtractController(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+  public ExtractController(RestTemplate restTemplate) {
+    this.restTemplate = restTemplate;
+  }
+
+  // redirect or show page based on user role
+  @GetMapping("/")
+  public String index(HttpSession session) {
+    String role = (String) session.getAttribute("role");
+    // Boolean verified = (Boolean) session.getAttribute("verified");
+
+    if (role == null) {
+      return "redirect:/login.html";
     }
+    // if (verified == null || !verified) {
+    // return "display-view-only";
+    // }
 
-    // redirect or show page based on user role
-    @GetMapping("/")
-    public String index(HttpSession session) {
-        String role = (String) session.getAttribute("role");
-        // Boolean verified = (Boolean) session.getAttribute("verified");
+    return "ADMIN".equals(role) ? "extract" : "display-view-only"; // CHANGED SOMETHING HERE FOR TESTING display ->
+                                                                   // extract
+  }
 
-        if (role == null) {
-            return "redirect:/login.html";
+  // Handles POST /extract
+  // JS calls this with a recorded meeting transcript or meeting video url
+  // Sends the transcript to Gemini with extraction instructions
+  // Returns Gemini's raw JSON response to the frontend to parse
+  // @ResponseBody: write the return value directly as the HTTP response body
+  @PostMapping(value = "/extract")
+  @ResponseBody
+  public ResponseEntity<?> extract(
+      @RequestParam(value = "videoUrl", required = false) String videoUrl,
+      @RequestParam(value = "transcript", required = false) String transcript) {
+
+    try {
+      // ROUTE 1: Frontend sent a video URL
+      if (videoUrl != null && !videoUrl.isEmpty()) {
+        String transcribedText = transcribeFromUrl(videoUrl);
+        ;
+        System.out.println("=== TRANSCRIPT ===\n" + transcribedText);
+
+        if (transcribedText == null || transcribedText.isBlank()) {
+          return ResponseEntity.badRequest().body("{\"error\":\"Transcript is empty.\"}");
         }
-        // if (verified == null || !verified) {
-        //     return "display-view-only";
-        // }
+        // return just the text so frontend can place it in the text box
+        return ResponseEntity.ok().body(Map.of("transcript", transcribedText));
+      }
 
-        return "ADMIN".equals(role) ? "extract" : "display-view-only"; // CHANGED SOMETHING HERE FOR TESTING display ->
-                                                                       // extract
-    }
+      // ROUTE 2: Frontend sent text 
+      if (transcript != null && !transcript.isBlank()) {
+        String prompt = """
+            You are a data extraction assistant.
+            Read the transcript below and extract every product discussed for the Product Creator form described here.
+            A single transcript can describe MULTIPLE products. Create one product object per distinct
+            product or deliverable discussed.
+            Return ONLY a valid JSON object, no markdown, no explanation, no code fences.
+            If a field is not mentioned in the transcript, set its value to null.
+            For boolean fields (checkboxes), use true or false.
+            For date fields, use DD-MMM-YYYY format (example: 15-Mar-2026).
+            For hours fields, return a plain number with no units.
+            Do not invent values that are not supported by the transcript.
+            "What_is_the_name_of_this_Product" should start with: TEST_G13_VS_(random word here)
+            "Delivery_Rate" has to be: "Normal", "Urgent", "Immediate" only
+            The top-level JSON object must have EXACTLY this structure:
+            Deal ID is specified keep it exactly that
+            Deal Name has to be exactly as described
+            Product cost is in hours if money is in the transcript do not add that value here
 
-    // Handles POST /extract
-    // JS calls this with a recorded meeting transcript
-    // Sends the transcript to Gemini with extraction instructions
-    // Returns Gemini's raw JSON response to the frontend to parse
-    // @ResponseBody: write the return value directly as the HTTP response body
-    @PostMapping(value = "/extract", consumes = {"multipart/form-data"})
-    @ResponseBody
-    public ResponseEntity<?> extract(
-            @RequestParam(value = "file", required = false) MultipartFile file,
-            @RequestParam(value = "transcript", required = false) String transcript) {
-
-        try {
-            // ROUTE 1: Frontend sent a video file -> Transcribe and return the text
-            if (file != null && !file.isEmpty()) {
-                String transcribedText = transcribe(file.getBytes());
-                System.out.println("=== TRANSCRIPT ===\n" + transcribedText);
-                
-                if (transcribedText == null || transcribedText.isBlank()) {
-                    return ResponseEntity.badRequest().body("{\"error\":\"Transcript is empty.\"}");
-                }
-                // Return just the text so frontend can place it in the text box
-                return ResponseEntity.ok().body(Map.of("transcript", transcribedText));
+            {
+              "data": [ one product object per product discussed, in the order discussed ]
             }
 
-            // ROUTE 2: Frontend sent text -> Send to Gemini and return JSON
-            if (transcript != null && !transcript.isBlank()) {
-                String prompt = """
-                        You are a data extraction assistant.
-                        Read the transcript below and extract every product discussed for the Product Creator form described here.
-                        A single transcript can describe MULTIPLE products. Create one product object per distinct
-                        product or deliverable discussed.
-                        Return ONLY a valid JSON object, no markdown, no explanation, no code fences.
-                        If a field is not mentioned in the transcript, set its value to null.
-                        For boolean fields (checkboxes), use true or false.
-                        For date fields, use DD-MMM-YYYY format (example: 15-Mar-2026).
-                        For hours fields, return a plain number with no units.
-                        Do not invent values that are not supported by the transcript.
-                        "What_is_the_name_of_this_Product" should start with: TEST_G13_VS_(random word here)
-                        "Delivery_Rate" has to be: "Normal", "Urgent", "Immediate" only
-                        The top-level JSON object must have EXACTLY this structure:
-                        Deal ID is specified keep it exactly that
-                        Deal Name has to be exactly as described
-                        Product cost is in hours if money is in the transcript do not add that value here
-        
-                        {
-                          "data": [ one product object per product discussed, in the order discussed ]
-                        }
-        
-                        Each product object must have EXACTLY this structure and these keys:
-        
-                        {
-        
-                          "Deal_ID": "3869165000077927129",
-                          "Deal_Name": "3869165000077927129",
-                          "What_is_the_name_of_this_Product": string,
-                          "Product_Description1": string or null,
-                          "Delivery_Rate": string,
-                          "Service_Types": ["Custom Functions"],
-                          "Automation_Triggers": array of trigger objects (see below),
-                          "Standard_Function_Outputs": array of output objects (see below),
-                          "Product_Cost": number or null,
-                          "Calculate_Hours": true,
-                          "Generate_Product_Description": true,
-                          "Estimated_Duration_to_Implement_days": number or null,
-        
-                          "Latest_Review_Date": string or null,
-                          "Passed_IAT": boolean,
-                          "General_Comments": string or null,
-        
-                          "User_Story_Created": boolean or null
-                        }
-        
-                        Each object in "Automation_Triggers" represents one IF row and must have exactly these keys:
-                        {
-                          "Trigger_Number": number (sequential, starting at 1),
-                          "Name_of_Trigger_Application": string or null,
-                          "Is_the_application_a_Zoho_App": "Yes" or "No" or null,
-                          "Trigger_Event_Description": string or null (describe the trigger event in detail),
-                          "Filters": string or null (multiple filters separated with ';'),
-                          "Trigger_Assumptions": string or null,
-                          "Hours": number or null
-                        }
-        
-                        Each object in "Standard_Function_Outputs" represents one THEN row and must have exactly these keys:
-                        {
-                          "Inclusions": string or null,
-                          "Exclusions": string or null,
-                          "Detailed_Description": string or null,
-                          "Estimated_Hours": number or null
-                        }
-        
-                        Special field rules:
-                        - "Product_Description1": ALWAYS generate this field when the transcript describes any work
-                          to be delivered. Summarize what Aether will build for the client in your own words, phrased like
-                          "Aether will create within the Client's Zoho CRM Application Workflows and custom functions that: ..."
-                          Only use null if the transcript contains no deliverables at all.
-        
-                        - "Service_Types": always output exactly ["Custom Functions"] for every product,
-                          regardless of what the transcript says.
-        
-                        Rules for identifying Automation_Triggers and Standard_Function_Outputs:
-                        - Triggers are almost never stated with literal "IF/THEN" wording. Treat ANY
-                          event-then-action pattern in the transcript as a trigger and output pair.
-                          Phrases like "when...", "whenever...", "once...", "after...", "as soon as...",
-                          "every time...", "on submission...", "at the end of the month..." all signal triggers.
-                        - The EVENT part becomes one Automation_Triggers row.
-                          Example: "when a customer places an order" becomes a trigger with
-                          Trigger_Event_Description "A customer places an order".
-                        - The ACTION part becomes one Standard_Function_Outputs row linked to that trigger
-                          via "Select_Trigger".
-                          Example: "...send a confirmation email" becomes an output with
-                          Detailed_Description "Send a confirmation email to the customer".
-                        - One trigger can have multiple outputs. Create one output row per distinct action.
-                        - Conditions restricting the event ("only for orders over $500") belong in "Filters".
-                        - Unstated things you must presume for the automation to work belong in "Trigger_Assumptions".
-                        - Number triggers sequentially starting at 1 WITHIN each product. Trigger numbering
-                          restarts for every product, and "Select_Trigger" always refers to a Trigger_Number
-                          in the SAME product.
-                        - Only use empty arrays if the transcript truly contains no event-then-action
-                          behaviour anywhere for that product.
-        
-                        Rules for multiple products:
-                        - Fields discussed once but applying to the whole engagement (example: Deal_ID,
-                          Deal_Name_Account_Contact, Project) should be repeated in every product object.
-                        - Fields discussed per product (example: Product_Name, hours, delivery rate,
-                          reviewer, triggers) belong only to the product they were discussed for.
-                        - Do not merge triggers, outputs, hours, or comments from different products together.
-        
-                        Transcript:
-                        """
-                        + transcript;
+            Each product object must have EXACTLY this structure and these keys:
 
-                Map<String, Object> requestPayload = Map.of(
-                        "contents", List.of(
-                                Map.of("parts", List.of(
-                                        Map.of("text", prompt)))),
-                        "generationConfig", Map.of(
-                                "temperature", 0.1,
-                                "responseMimeType", "application/json"));
+            {
 
-                String requestBody = jsonMapper.writeValueAsString(requestPayload);
+              "Deal_ID": "3869165000077927129",
+              "Deal_Name": "3869165000077927129",
+              "What_is_the_name_of_this_Product": string,
+              "Product_Description1": string or null,
+              "Delivery_Rate": string,
+              "Service_Types": ["Custom Functions"],
+              "Automation_Triggers": array of trigger objects (see below),
+              "Standard_Function_Outputs": array of output objects (see below),
+              "Product_Cost": number or null,
+              "Calculate_Hours": true,
+              "Generate_Product_Description": true,
+              "Estimated_Duration_to_Implement_days": number or null,
 
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
+              "Latest_Review_Date": string or null,
+              "Passed_IAT": boolean,
+              "General_Comments": string or null,
 
-                String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
-                        + geminiApiKey;
-
-                ResponseEntity<String> geminiResponse = restTemplate.exchange(
-                        url,
-                        HttpMethod.POST,
-                        new HttpEntity<>(requestBody, headers),
-                        String.class);
-
-                return ResponseEntity.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(geminiResponse.getBody());
+              "User_Story_Created": boolean or null
             }
 
-            // ROUTE 3: Neither file nor transcript was provided
-            return ResponseEntity.badRequest().body("{\"error\":\"Must provide either a file or a transcript.\"}");
+            Each object in "Automation_Triggers" represents one IF row and must have exactly these keys:
+            {
+              "Trigger_Number": number (sequential, starting at 1),
+              "Name_of_Trigger_Application": string or null,
+              "Is_the_application_a_Zoho_App": "Yes" or "No" or null,
+              "Trigger_Event_Description": string or null (describe the trigger event in detail),
+              "Filters": string or null (multiple filters separated with ';'),
+              "Trigger_Assumptions": string or null,
+              "Hours": number or null
+            }
 
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("{\"error\": \"" + e.getMessage() + "\"}");
-        }
-    }
+            Each object in "Standard_Function_Outputs" represents one THEN row and must have exactly these keys:
+            {
+              "Inclusions": string or null,
+              "Exclusions": string or null,
+              "Detailed_Description": string or null,
+              "Estimated_Hours": number or null
+            }
 
-    private String transcribe(byte[] fileBytes) throws InterruptedException {
+            Special field rules:
+            - "Product_Description1": ALWAYS generate this field when the transcript describes any work
+              to be delivered. Summarize what Aether will build for the client in your own words, phrased like
+              "Aether will create within the Client's Zoho CRM Application Workflows and custom functions that: ..."
+              Only use null if the transcript contains no deliverables at all.
+
+            - "Service_Types": always output exactly ["Custom Functions"] for every product,
+              regardless of what the transcript says.
+
+            Rules for identifying Automation_Triggers and Standard_Function_Outputs:
+            - Triggers are almost never stated with literal "IF/THEN" wording. Treat ANY
+              event-then-action pattern in the transcript as a trigger and output pair.
+              Phrases like "when...", "whenever...", "once...", "after...", "as soon as...",
+              "every time...", "on submission...", "at the end of the month..." all signal triggers.
+            - The EVENT part becomes one Automation_Triggers row.
+              Example: "when a customer places an order" becomes a trigger with
+              Trigger_Event_Description "A customer places an order".
+            - The ACTION part becomes one Standard_Function_Outputs row linked to that trigger
+              via "Select_Trigger".
+              Example: "...send a confirmation email" becomes an output with
+              Detailed_Description "Send a confirmation email to the customer".
+            - One trigger can have multiple outputs. Create one output row per distinct action.
+            - Conditions restricting the event ("only for orders over $500") belong in "Filters".
+            - Unstated things you must presume for the automation to work belong in "Trigger_Assumptions".
+            - Number triggers sequentially starting at 1 WITHIN each product. Trigger numbering
+              restarts for every product, and "Select_Trigger" always refers to a Trigger_Number
+              in the SAME product.
+            - Only use empty arrays if the transcript truly contains no event-then-action
+              behaviour anywhere for that product.
+
+            Rules for multiple products:
+            - Fields discussed once but applying to the whole engagement (example: Deal_ID,
+              Deal_Name_Account_Contact, Project) should be repeated in every product object.
+            - Fields discussed per product (example: Product_Name, hours, delivery rate,
+              reviewer, triggers) belong only to the product they were discussed for.
+            - Do not merge triggers, outputs, hours, or comments from different products together.
+
+            Transcript:
+            """
+            + transcript;
+
+        Map<String, Object> requestPayload = Map.of(
+            "contents", List.of(
+                Map.of("parts", List.of(
+                    Map.of("text", prompt)))),
+            "generationConfig", Map.of(
+                "temperature", 0.1,
+                "responseMimeType", "application/json"));
+
+        String requestBody = jsonMapper.writeValueAsString(requestPayload);
+
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", assemblyAiApiKey);
-
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        HttpEntity<byte[]> uploadEntity = new HttpEntity<>(fileBytes, headers);
-        Map uploadResponse = restTemplate.postForObject(
-                "https://api.assemblyai.com/v2/upload", uploadEntity, Map.class);
-        String audioUrl = (String) uploadResponse.get("upload_url");
-
         headers.setContentType(MediaType.APPLICATION_JSON);
-        Map<String, Object> payload = Map.of("audio_url", audioUrl);
-        HttpEntity<Map<String, Object>> submitEntity = new HttpEntity<>(payload, headers);
-        Map submitResponse = restTemplate.postForObject(
-                "https://api.assemblyai.com/v2/transcript", submitEntity, Map.class);
-        String id = (String) submitResponse.get("id");
 
-        HttpEntity<Void> pollEntity = new HttpEntity<>(headers);
-        while (true) {
-            Map pollResponse = restTemplate.exchange(
-                    "https://api.assemblyai.com/v2/transcript/" + id,
-                    HttpMethod.GET, pollEntity, Map.class).getBody();
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
+            + geminiApiKey;
 
-            String status = (String) pollResponse.get("status");
-            if ("completed".equals(status)) {
-                return (String) pollResponse.get("text");
-            }
+        ResponseEntity<String> geminiResponse = restTemplate.exchange(
+            url,
+            HttpMethod.POST,
+            new HttpEntity<>(requestBody, headers),
+            String.class);
 
-            if ("error".equals(status)) {
-                throw new RuntimeException("Transcription failed: " + pollResponse.get("error"));
-            }
-            Thread.sleep(2000);
-        }
+        return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(geminiResponse.getBody());
+      }
+
+      // ROUTE 3: No video url or transcript was provided
+      return ResponseEntity.badRequest().body("{\"error\":\"Must provide either a file or a transcript.\"}");
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body(Map.of("error", e.getMessage()));
     }
+  }
+
+  private String transcribeFromUrl(String videoUrl) throws InterruptedException {
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("Authorization", assemblyAiApiKey);
+    headers.setContentType(MediaType.APPLICATION_JSON);
+
+    // submit the Cloudinary URL directly to AssemblyAI
+    Map<String, Object> payload = Map.of("audio_url", videoUrl);
+    HttpEntity<Map<String, Object>> submitEntity = new HttpEntity<>(payload, headers);
+    Map submitResponse = restTemplate.postForObject(
+        "https://api.assemblyai.com/v2/transcript", submitEntity, Map.class);
+    String id = (String) submitResponse.get("id");
+
+    // check the API status continuously until the transcription process finishes
+    HttpEntity<Void> pollEntity = new HttpEntity<>(headers);
+    while (true) {
+      Map pollResponse = restTemplate.exchange(
+          "https://api.assemblyai.com/v2/transcript/" + id,
+          HttpMethod.GET, pollEntity, Map.class).getBody();
+
+      String status = (String) pollResponse.get("status");
+      if ("completed".equals(status)) {
+        return (String) pollResponse.get("text");
+      }
+
+      if ("error".equals(status)) {
+        throw new RuntimeException("Transcription failed: " + pollResponse.get("error"));
+      }
+
+      Thread.sleep(2000);
+    }
+  }
+
+  @GetMapping("/api/assembly-key")
+  @ResponseBody
+  public ResponseEntity<?> getAssemblyKey() {
+    // Returns your key as a simple JSON object: {"apiKey": "your-key-here"}
+    return ResponseEntity.ok(Map.of("apiKey", assemblyAiApiKey));
+  }
+
 }
 /*
  * //Will need it later Each object in "Custom_Function_Outputs" represents one
