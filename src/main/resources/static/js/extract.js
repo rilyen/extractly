@@ -703,10 +703,10 @@ async function sendJsonToZoho() {
         return;
     }
 
-    lastJSON.data.forEach(product => {
-        product.Deal_ID = dealId;
-        product.Deal_Name = dealId;
-    })
+    // lastJSON.data.forEach(product => {
+    //     product.Deal_ID = dealId;
+    //     product.Deal_Name = dealId;
+    // })
 
     const payload = { data: lastJSON.data };
     setZohoStatus('Sending to Zoho...');
@@ -736,18 +736,24 @@ async function zohoPreview() {
     saveFormToProduct(currentProduct);
 
     const dealId = document.getElementById('dealSelect').value;
+
     if (!dealId) {
         setStatus('Select a deal first.');
         return;
     }
 
-    lastJSON.data.forEach(product => {
-        product.Deal_ID = dealId;
-        product.Deal_Name = dealId;
-    })
+    const product = lastJSON.data[currentProduct];
+    product.Deal_ID = dealId;
+    product.Deal_Name = dealId;
+
+    // lastJSON.data.forEach(product => {
+    //     product.Deal_ID = dealId;
+    //     product.Deal_Name = dealId;
+    // })
 
     const payload = { data: lastJSON.data };
     console.log(JSON.stringify(payload, null, 2));
+
 
 }
 
@@ -758,16 +764,16 @@ async function getProjectNameID() {
     const deals = new Map();
 
     deal.data.forEach(d => {
-        if (!d.Deal_ID || !d.Deal_Name || !d.Deal_Name.Account_Name) return;
-        if (!deals.has(d.Deal_ID)) {
-            deals.set(d.Deal_ID, d.Deal_Name.Account_Name);
+        if (!d.Integration) return;
+        if (d.Integration.ID) {
+            deals.set(d.Integration.ID, d.Integration.zc_display_value);
         }
     });
 
     const select = document.getElementById('dealSelect');
     select.innerHTML = '<option value="">-- Select -- </option>';
     deals.forEach((name, id) => {
-        select.innerHTML += `<option value ="${id}">${name}</option>`;
+        select.innerHTML += `<option value ="${id}">${name} ${id} </option>`;
     });
 
     document.getElementById('dealSelect').addEventListener('change', (event) => {
@@ -776,6 +782,25 @@ async function getProjectNameID() {
             id.value = event.target.value;
         }
     });
+    // deal.data.forEach(d => {
+    //     if (!d.Deal_ID || !d.Deal_Name || !d.Deal_Name.Account_Name) return;
+    //     if (d.Deal_ID) {
+    //         deals.set(d.Deal_Name.Potential_Name, d.Deal_Name.ID, d.Deal_Name.Account_Name);
+    //     }
+    // });
+
+    // const select = document.getElementById('dealSelect');
+    // select.innerHTML = '<option value="">-- Select -- </option>';
+    // deals.forEach((deal, name, id) => {
+    //     select.innerHTML += `<option value ="${id}">${deal} ${id} ${name}</option>`;
+    // });
+
+    // document.getElementById('dealSelect').addEventListener('change', (event) => {
+    //     const id = document.getElementById('Deal_ID');
+    //     if (id) {
+    //         id.value = event.target.value;
+    //     }
+    // });
 }
 
 getProjectNameID();

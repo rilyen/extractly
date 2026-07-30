@@ -21,8 +21,11 @@ public class GetZohoDeals {
     @Value("${zoho.appLinkName}")
     private String app_link_name;
 
-    @Value("${zoho.reportLinkName}")
+    @Value("${zoho.allProjects}")
     private String report_link_name;
+
+    // @Value("${zoho.reportLinkName}")
+    // private String report_link_name;
 
     public GetZohoDeals(AccessTokenZoho token) {
         this.token = token;
