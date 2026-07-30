@@ -12,6 +12,35 @@ const DateFields = ["Latest_Review_Date"];
 //DeliveryRate needed
 const Dropdowns = ["ReviewerApprover"];
 
+// Default
+const DEFAULT_STANDARD_SERVICE = "Unique Automation (or service not listed below)";
+
+// Standard service names loaded from Zoho instead of hardcoding them
+let StandardServicesOptions = [DEFAULT_STANDARD_SERVICE];
+
+// tracks the fetch so extract() / extractFromVideo() can wait for it
+let standardServicesReady = null;
+
+async function loadStandardServices() {
+    standardServicesReady = fetch('/standard-services')
+        .then(res => res.json())
+        .then(data => {
+            const products = (data && data.data) || [];
+            const names = products
+                .map(p => p.Output_Name)
+                .filter(name => name != null && name !== '');
+            StandardServicesOptions = [...new Set(names)];
+
+            // the default option
+            if (!StandardServicesOptions.includes(DEFAULT_STANDARD_SERVICE)) {
+                StandardServicesOptions.push(DEFAULT_STANDARD_SERVICE);
+            }
+        })
+        .catch(err => {
+            console.error('Could not load standard services, using fallback only:', err);
+        });
+}
+
 // which product is currently loaded into the form.
 // Ive assigned them (and im using them) as an index and treated them as sigle objects
 let currentProduct = 0;
@@ -27,6 +56,11 @@ async function extract() {
     }
 
     setStatus('Calling Gemini...');
+
+    // to make sure the standard services list has finished
+    if (standardServicesReady) {
+        await standardServicesReady;
+    }
 
     try {
         // A Post request to /extract endpoint
@@ -106,6 +140,11 @@ async function extractFromVideo() {
     }
 
     setStatus('Extracting data...');
+
+    // to make sure the standard services list has finished loading 
+    if (standardServicesReady) {
+        await standardServicesReady;
+    }
 
     const formData = new FormData();
     formData.append("file", file);
@@ -300,7 +339,7 @@ function addThenEntry(entry) {
     const row = document.createElement('tr');
 
     const triggerCell = CreateTextInput(entry.Select_Trigger);
-    const servicesCell = CreateTextInput(entry.Standard_Services);
+    const servicesCell = makeServiceDropdownCell(entry.Standard_Services);
     const inclCell = CreateTextArea(entry.Inclusions);
     const exclCell = CreateTextArea(entry.Exclusions);
     const descCell = CreateTextArea(entry.Detailed_Description);
@@ -353,6 +392,32 @@ function makeYesNoCell(entry) {
         '<option value="No">No</option>';
     if (entry != null) select.value = entry;
     select.onchange = saveEdits;            // save into the JSON when the user picks Yes/No
+    td.appendChild(select);
+    return td;
+}
+
+// a dropdown listing Zoho's standard service names
+// Defaults to "Unique Automation (or service not listed below)" if the value is missing or doesn't match.
+function makeServiceDropdownCell(entry) {
+    const td = document.createElement('td');
+    const select = document.createElement('select');
+    select.className = 'form-select';
+
+    // build one <option> per known standard service
+    let optionsHtml = '';
+    StandardServicesOptions.forEach(name => {
+        optionsHtml += '<option value="' + name + '">' + name + '</option>';
+    });
+    select.innerHTML = optionsHtml;
+
+    // pick the matching option, or fall back to the default catch-all
+    if (entry != null && StandardServicesOptions.includes(entry)) {
+        select.value = entry;
+    } else {
+        select.value = DEFAULT_STANDARD_SERVICE;
+    }
+
+    select.onchange = saveEdits;            // save into the JSON when the user picks a service
     td.appendChild(select);
     return td;
 }
@@ -649,3 +714,4 @@ async function getProjectNameID() {
 }
 
 getProjectNameID();
+loadStandardServices();
