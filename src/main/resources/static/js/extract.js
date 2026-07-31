@@ -328,17 +328,27 @@ function fillForm(map) {
     });
 
     // We are always setting the Service type to be "Custom Functions"(we need it for the IF and THENs)
-    const Custom = document.getElementById("ServiceType");
-    if (Custom) {
-        Custom.value = "Custom Functions";
-    }
+    // const Custom = document.getElementById("ServiceType");
+    // if (Custom) {
+    //     Custom.value = "Custom Functions";
+    // }
 
     // Map THE dropdown fields. It is set only if the value is one of the allowed options. Otherwise, it is left as the default option
-    setDropdown("Project", map.Project);
-    setDropdown("DealNameAccountContact", map.Deal_Name_Account_Contact);
+    // setDropdown("Project", map.Project);
+    // setDropdown("DealNameAccountContact", map.Deal_Name_Account_Contact);
     const service = document.getElementById("Service_Types");
     if (service) {
         service.value = "Custom Functions"
+    }
+
+    const select = document.getElementById("dealSelect");
+    if (select) {
+        select.value = map.Deal_ID || '';
+    }
+
+    const dealIdField = document.getElementById("Deal_ID");
+    if (dealIdField) {
+        dealIdField.value = map.Deal_ID || '';
     }
 
     // creates the IFs and THENs tables for the product
@@ -784,6 +794,10 @@ async function getProjectNameID() {
         const id = document.getElementById('Deal_ID');
         if (id) {
             id.value = event.target.value;
+        }
+        if (lastJSON && lastJSON.data && lastJSON.data[currentProduct]) {
+            lastJSON.data[currentProduct].Deal_ID = event.target.value;
+            lastJSON.data[currentProduct].Deal_Name = event.target.value;
         }
     });
     // deal.data.forEach(d => {
