@@ -155,7 +155,16 @@ async function mapTranscript(formData) {
         // convert clean string to JS object
         lastJSON = parseGeminiResponse(data);
 
-        showJSON(lastJSON);
+        //   console.log('data:', lastJSON.data[0]);
+        // display the parsed result with 2-space indentation
+        // enable action buttons
+        // document.getElementById('jsonOutput').textContent = JSON.stringify(lastJSON, null, 2);
+
+        // Pushes the values from the JSON object into the form fields. 
+        // The mapping function
+        // fillForm(lastJSON);
+
+        // showJSON(lastJSON);
 
         // fill the product dropdown and load the first product into the form
         selectProduct(lastJSON);
