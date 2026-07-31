@@ -1,25 +1,27 @@
 package com._6.extractly.controllers;
 
+import java.util.Map;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com._6.extractly.service.AddZohoForm;
 import com._6.extractly.service.GetZohoDeals;
-
-import java.util.Map;
-
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import com._6.extractly.service.GetZohoStandardServices;
 
 @RestController
 public class ZohoController {
     private final AddZohoForm addZohoForm;
     private final GetZohoDeals getZohoDeals;
+    private final GetZohoStandardServices getZohoStandardServices;
 
-    public ZohoController(AddZohoForm addZohoForm, GetZohoDeals getZohoDeals) {
+    public ZohoController(AddZohoForm addZohoForm, GetZohoDeals getZohoDeals,
+            GetZohoStandardServices getZohoStandardServices) {
         this.addZohoForm = addZohoForm;
         this.getZohoDeals = getZohoDeals;
+        this.getZohoStandardServices = getZohoStandardServices;
     }
 
     @PostMapping("/send-to-service")
@@ -31,6 +33,11 @@ public class ZohoController {
     @GetMapping("/deals")
     public Map<String, Object> deals() {
         return getZohoDeals.getDeals();
+    }
+
+    @GetMapping("/standard-services")
+    public Map<String, Object> standardServices() {
+        return getZohoStandardServices.getStandardServices();
     }
 
 }

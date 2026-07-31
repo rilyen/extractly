@@ -12,6 +12,37 @@ const DateFields = ["Latest_Review_Date"];
 //DeliveryRate needed
 const Dropdowns = ["ReviewerApprover"];
 
+// Default
+const DEFAULT_STANDARD_SERVICE = "4003860000000356135";
+
+// Standard service names loaded from Zoho instead of hardcoding them
+//let StandardServicesOptions = [DEFAULT_STANDARD_SERVICE];
+
+// tracks the fetch so extract() / extractFromVideo() can wait for it
+let standardServicesReady = null;
+
+async function loadStandardServices() {
+    standardServicesReady = fetch('/standard-services')
+        .then(res => res.json())
+        .then(data => {
+            const products = (data && data.data) || [];
+            //console.log("Products: " + products);
+            StandardServicesOptions = new Map();
+            products.forEach(p => {
+                if (!p.ID) {
+                    return;
+                }
+                if (!StandardServicesOptions.has(p.ID)) {
+                    StandardServicesOptions.set(p.ID, p.Output_Name);
+                }
+            });
+        })
+        .then(() => console.log('Standard Services' + StandardServicesOptions))
+        .catch(err => {
+            console.error('Could not load standard services, using fallback only:', err);
+        });
+}
+
 // which product is currently loaded into the form.
 // Ive assigned them (and im using them) as an index and treated them as sigle objects
 let currentProduct = 0;
@@ -27,9 +58,9 @@ async function refreshGeminiKeyStatus() {
     try {
         const res = await fetch('/gemini-key/status');
         const data = await res.json();
-        statusEl.textContent = data.hasKey 
-        ? 'A Gemini API key is saved for this session.' 
-        : 'No Gemini API key saved yet. Paste Gemini API key and click "Save Key".';
+        statusEl.textContent = data.hasKey
+            ? 'A Gemini API key is saved for this session.'
+            : 'No Gemini API key saved yet. Paste Gemini API key and click "Save Key".';
     } catch (err) {
         statusEl.textContent = 'Could not check Gemini API key status.';
     }
@@ -52,7 +83,7 @@ async function saveGeminiKey() {
         const res = await fetch('/gemini-key', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ geminiApiKey: geminiApiKey})
+            body: JSON.stringify({ geminiApiKey: geminiApiKey })
         });
         const data = await res.json();
         if (!res.ok) {
@@ -100,6 +131,11 @@ async function extract() {
 
 
 async function mapTranscript(formData) {
+    // to make sure the standard services list has finished
+    if (standardServicesReady) {
+        await standardServicesReady;
+    }
+
     try {
         // A Post request to /extract endpoint
         // Backend controller returns a JSON object response
@@ -215,6 +251,11 @@ async function createTranscriptFromVideo() {
     if (!file) return;
 
     setStatus('Transcribing video...');
+
+    // to make sure the standard services list has finished loading 
+    if (standardServicesReady) {
+        await standardServicesReady;
+    }
 
     const formData = new FormData();
     formData.append("file", file);
@@ -375,17 +416,27 @@ function fillForm(map) {
     });
 
     // We are always setting the Service type to be "Custom Functions"(we need it for the IF and THENs)
-    const Custom = document.getElementById("ServiceType");
-    if (Custom) {
-        Custom.value = "Custom Functions";
-    }
+    // const Custom = document.getElementById("ServiceType");
+    // if (Custom) {
+    //     Custom.value = "Custom Functions";
+    // }
 
     // Map THE dropdown fields. It is set only if the value is one of the allowed options. Otherwise, it is left as the default option
-    setDropdown("Project", map.Project);
-    setDropdown("DealNameAccountContact", map.Deal_Name_Account_Contact);
+    // setDropdown("Project", map.Project);
+    // setDropdown("DealNameAccountContact", map.Deal_Name_Account_Contact);
     const service = document.getElementById("Service_Types");
     if (service) {
         service.value = "Custom Functions"
+    }
+
+    const select = document.getElementById("dealSelect");
+    if (select) {
+        select.value = map.Deal_ID || '';
+    }
+
+    const dealIdField = document.getElementById("Deal_ID");
+    if (dealIdField) {
+        dealIdField.value = map.Deal_ID || '';
     }
 
     // creates the IFs and THENs tables for the product
@@ -453,7 +504,7 @@ function addThenEntry(entry) {
     const row = document.createElement('tr');
 
     const triggerCell = CreateTextInput(entry.Select_Trigger);
-    const servicesCell = CreateTextInput(entry.Standard_Services);
+    const servicesCell = makeServiceDropdownCell(entry.Standard_Services);
     const inclCell = CreateTextArea(entry.Inclusions);
     const exclCell = CreateTextArea(entry.Exclusions);
     const descCell = CreateTextArea(entry.Detailed_Description);
@@ -506,6 +557,34 @@ function makeYesNoCell(entry) {
         '<option value="No">No</option>';
     if (entry != null) select.value = entry;
     select.onchange = saveEdits;            // save into the JSON when the user picks Yes/No
+    td.appendChild(select);
+    return td;
+}
+
+// a dropdown listing Zoho's standard service names
+// Defaults to "Unique Automation (or service not listed below)" if the value is missing or doesn't match.
+function makeServiceDropdownCell(entry) {
+    const td = document.createElement('td');
+    const select = document.createElement('select');
+    select.className = 'form-select';
+
+    // build one <option> per known standard service
+    let optionsHtml = '';
+    StandardServicesOptions.forEach((name, id) => {
+        optionsHtml += `<option value = "${id}" >  ${name}  </option>`;
+    });
+    select.innerHTML = optionsHtml;
+
+    const saveId = entry && typeof entry === 'object' ? entry.ID : entry;
+
+    // pick the matching option, or fall back to the default catch-all
+    if (saveId != null && StandardServicesOptions.has(saveId)) {
+        select.value = saveId;
+    } else {
+        select.value = DEFAULT_STANDARD_SERVICE;
+    }
+
+    select.onchange = saveEdits;            // save into the JSON when the user picks a service
     td.appendChild(select);
     return td;
 }
@@ -726,10 +805,10 @@ async function sendJsonToZoho() {
         return;
     }
 
-    lastJSON.data.forEach(product => {
-        product.Deal_ID = dealId;
-        product.Deal_Name = dealId;
-    })
+    // lastJSON.data.forEach(product => {
+    //     product.Deal_ID = dealId;
+    //     product.Deal_Name = dealId;
+    // })
 
     const payload = { data: lastJSON.data };
     setZohoStatus('Sending to Zoho...');
@@ -759,18 +838,24 @@ async function zohoPreview() {
     saveFormToProduct(currentProduct);
 
     const dealId = document.getElementById('dealSelect').value;
+
     if (!dealId) {
         setStatus('Select a deal first.');
         return;
     }
 
-    lastJSON.data.forEach(product => {
-        product.Deal_ID = dealId;
-        product.Deal_Name = dealId;
-    })
+    const product = lastJSON.data[currentProduct];
+    product.Deal_ID = dealId;
+    product.Deal_Name = dealId;
+
+    // lastJSON.data.forEach(product => {
+    //     product.Deal_ID = dealId;
+    //     product.Deal_Name = dealId;
+    // })
 
     const payload = { data: lastJSON.data };
     console.log(JSON.stringify(payload, null, 2));
+
 
 }
 
@@ -781,16 +866,16 @@ async function getProjectNameID() {
     const deals = new Map();
 
     deal.data.forEach(d => {
-        if (!d.Deal_ID || !d.Deal_Name || !d.Deal_Name.Account_Name) return;
-        if (!deals.has(d.Deal_ID)) {
-            deals.set(d.Deal_ID, d.Deal_Name.Account_Name);
+        if (!d.Integration) return;
+        if (d.Integration.ID) {
+            deals.set(d.Integration.ID, d.Integration.zc_display_value);
         }
     });
 
     const select = document.getElementById('dealSelect');
     select.innerHTML = '<option value="">-- Select -- </option>';
     deals.forEach((name, id) => {
-        select.innerHTML += `<option value ="${id}">${name}</option>`;
+        select.innerHTML += `<option value ="${id}">${name} ${id} </option>`;
     });
 
     document.getElementById('dealSelect').addEventListener('change', (event) => {
@@ -798,7 +883,31 @@ async function getProjectNameID() {
         if (id) {
             id.value = event.target.value;
         }
+        if (lastJSON && lastJSON.data && lastJSON.data[currentProduct]) {
+            lastJSON.data[currentProduct].Deal_ID = event.target.value;
+            lastJSON.data[currentProduct].Deal_Name = event.target.value;
+        }
     });
+    // deal.data.forEach(d => {
+    //     if (!d.Deal_ID || !d.Deal_Name || !d.Deal_Name.Account_Name) return;
+    //     if (d.Deal_ID) {
+    //         deals.set(d.Deal_Name.Potential_Name, d.Deal_Name.ID, d.Deal_Name.Account_Name);
+    //     }
+    // });
+
+    // const select = document.getElementById('dealSelect');
+    // select.innerHTML = '<option value="">-- Select -- </option>';
+    // deals.forEach((deal, name, id) => {
+    //     select.innerHTML += `<option value ="${id}">${deal} ${id} ${name}</option>`;
+    // });
+
+    // document.getElementById('dealSelect').addEventListener('change', (event) => {
+    //     const id = document.getElementById('Deal_ID');
+    //     if (id) {
+    //         id.value = event.target.value;
+    //     }
+    // });
 }
 
 getProjectNameID();
+loadStandardServices();
