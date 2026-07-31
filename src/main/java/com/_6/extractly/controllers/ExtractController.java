@@ -28,8 +28,14 @@ import tools.jackson.databind.json.JsonMapper;
 public class ExtractController {
 
   // API key for Gemini
-  @Value("${gemini.api.key}")
-  private String geminiApiKey;
+  // @Value("${gemini.api.key}")
+  // private String geminiApiKey;
+
+  // NOTE: Nothing is stored in .env, or a database
+  // Every logged-in user must supply their own Gemini API Key, which is stored in their HttpSession
+  // API stays available for every /extract call made during the same login session and
+  // disappears when the user logs out or explicityl clears it
+  private static final String SESSION_GEMINI_KEY_ATTR = "geminiApiKey";
 
   // API key for AssemblyAI
   @Value("${assemblyai.api.key}")
@@ -66,6 +72,45 @@ public class ExtractController {
                                                                    // extract
   }
 
+  // Handles POST /gemini-key
+    // Frontend calls this once the user has typed/pasted their Gemini API key
+    // Stores it in the logged-in user's HttpSession
+    // It stays there for the rest of this login session and is used automatically by /extract and /extract-from-video
+    // so the frontend does not need to resend it with every call
+    @PostMapping("/gemini-key")
+    @ResponseBody
+    public ResponseEntity<String> saveGeminiKey(@RequestBody Map<String, String> body, HttpSession session) {
+
+      String geminiApiKey = body.get("geminiApiKey");
+      if (geminiApiKey == null || geminiApiKey.isBlank()) {
+        return ResponseEntity.badRequest().body("{\"error\":\"Gemini API key is required.\"}");
+      } 
+
+      session.setAttribute(SESSION_GEMINI_KEY_ATTR, geminiApiKey);
+      return ResponseEntity.ok("{\"message\":\"Gemini API key saved for this session.\"}");
+    }
+
+    // Handles Post/gemini-key/clear
+    // Frontend class this when the user clicks "Clear key". Removes just the
+    // Gemini key attribute from the session (the rest of the login session is untouched
+    // e.g. email or role attributes are untouched), so this does not log the user out
+    @PostMapping("/gemini-key/clear")
+    @ResponseBody
+    public ResponseEntity<String> clearGeminiKey(HttpSession session) {
+      session.removeAttribute(SESSION_GEMINI_KEY_ATTR);
+      return ResponseEntity.ok("{\"message\":\"Gemini API key cleared.\"}");
+    }
+
+    // Handles GET /gemini-key/status
+    // lets the frontend show "a key is currently saved" / "no key saved" without
+    // exposing the key's actual value
+    @GetMapping("/gemini-key/status")
+    @ResponseBody
+    public ResponseEntity<String> geminiKeyStatus(HttpSession session) {
+      boolean hasKey = session.getAttribute(SESSION_GEMINI_KEY_ATTR) != null;
+      return ResponseEntity.ok("{\"hasKey\": " + hasKey + "}");
+    }
+
   // Handles POST /extract
   // JS calls this with a recorded meeting transcript or meeting video url
   // Sends the transcript to Gemini with extraction instructions
@@ -75,7 +120,15 @@ public class ExtractController {
   @ResponseBody
   public ResponseEntity<?> extract(
       @RequestParam(value = "videoUrl", required = false) String videoUrl,
-      @RequestParam(value = "transcript", required = false) String transcript) {
+      @RequestParam(value = "transcript", required = false) String transcript,
+      HttpSession session) {
+
+    // Every user must have saved their own Gemini API key to this seession first
+    // The key lives only in this HttpSession (never persisted or logged server-side)
+    String geminiApiKey = (String) session.getAttribute(SESSION_GEMINI_KEY_ATTR);
+    if (geminiApiKey == null || geminiApiKey.isBlank()) {
+      return ResponseEntity.badRequest().body("{\"error\":\"Gemini API key is required.\"}");
+    } 
 
     try {
       // ROUTE 1: Frontend sent a video URL

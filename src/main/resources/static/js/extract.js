@@ -115,13 +115,15 @@ async function clearGeminiKey() {
 
 // triggered by the "Extract JSON" button
 async function extract() {
-    const formData = new FormData();
-    formData.append('transcript', document.getElementById('transcript').value.trim());
-
+    const transcript = document.getElementById('transcript').value.trim();
+    
     if (!transcript) {
         setStatus('Paste a transcript first.');
         return;
     }
+
+    const formData = new FormData();
+    formData.append('transcript', document.getElementById('transcript').value.trim());
 
     setStatus('Calling Gemini...');
 
