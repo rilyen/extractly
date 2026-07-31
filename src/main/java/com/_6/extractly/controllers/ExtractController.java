@@ -41,19 +41,13 @@ public class ExtractController {
   // use to convert into a valid JSON string
   private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
-    // use to get the prompt from Zoho
-    private final ZohoPromptService zohoPromptService;
+  // use to get the prompt from Zoho
+  private final ZohoPromptService zohoPromptService;
 
-    public ExtractController(RestTemplate restTemplate, ZohoPromptService zohoPromptService) {
-        this.restTemplate = restTemplate;
-        this.zohoPromptService = zohoPromptService;
-    }
-
-    // redirect or show page based on user role
-    @GetMapping("/")
-    public String index(HttpSession session) {
-        String role = (String) session.getAttribute("role");
-        // Boolean verified = (Boolean) session.getAttribute("verified");
+  public ExtractController(RestTemplate restTemplate, ZohoPromptService zohoPromptService) {
+    this.restTemplate = restTemplate;
+    this.zohoPromptService = zohoPromptService;
+  }
 
   // redirect or show page based on user role
   @GetMapping("/")
@@ -97,167 +91,9 @@ public class ExtractController {
         return ResponseEntity.ok().body(Map.of("transcript", transcribedText));
       }
 
-        // Instructions given to Gemini (from Zoho prompt service) with transcript text appended at the end
+      // ROUTE 2: Frontend sent text
+      if (transcript != null && !transcript.isBlank()) {
         String prompt = zohoPromptService.getPrompt() + "\n\nTranscript:\n" + transcript;
-
-        try {
-            // Build Gemini request payload as a plain java object graph that mirrors the
-            // JSON shape Gemini's API expects:
-            // { "contents": [ { "parts": [ { "text": "..." } ] } ],
-            // "generationConfig": { "temperature": 0.1 } }
-            //
-            // We build it this way so jsonMapper handles translating this structure into
-            // valid JSON text for us
-            // (no matter what characters end up inside "prompt")
-            //
-            // Low temperature is more deterministic, since we want consistent output
-            // responseMimeType "application/json" forces Gemini into strict JSON mode
-            Map<String, Object> requestPayload = Map.of(
-                    "contents", List.of(
-                            Map.of("parts", List.of(
-                                    Map.of("text", prompt)))),
-                    "generationConfig", Map.of(
-                            "temperature", 0.1,
-                            "responseMimeType", "application/json"));
-
-            // Serialize object graph into valid JSON string to send as HTTP request body
-            String requestBody = jsonMapper.writeValueAsString(requestPayload);
-
-            // Tell Gemini outgoing request body is JSON
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            // Gemini REST endpoint with our API key, using gemini 2.5 flash model
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
-                    + geminiApiKey;
-
-            // Send POST request to Gemini with JSON body + header
-            // response is String
-            ResponseEntity<String> geminiResponse = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    new HttpEntity<>(requestBody, headers),
-                    String.class);
-
-            // send Gemini's raw JSON response back to frontend JS (to be parsed into
-            // fields)
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(geminiResponse.getBody());
-
-        } catch (Exception e) {
-            // Return error message for failures
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("{\"error\": \"" + e.getMessage() + "\"}");
-        }
-    }
-
-            Each product object must have EXACTLY this structure and these keys:
-
-            {
-
-        // Instructions given to Gemini (from Zoho prompt service) with transcript text appended at the end
-        String prompt = zohoPromptService.getPrompt() + "\n\nTranscript:\n" + transcript;
-
-        try {
-            Map<String, Object> requestPayload = Map.of(
-                    "contents", List.of(
-                            Map.of("parts", List.of(
-                                    Map.of("text", prompt)))),
-                    "generationConfig", Map.of(
-                            "temperature", 0.1,
-                            "responseMimeType", "application/json"));
-
-            String requestBody = jsonMapper.writeValueAsString(requestPayload);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
-                    + geminiApiKey;
-
-            ResponseEntity<String> geminiResponse = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    new HttpEntity<>(requestBody, headers),
-                    String.class);
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(geminiResponse.getBody());
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("{\"error\": \"" + e.getMessage() + "\"}");
-        }
-    }
-
-              "Latest_Review_Date": string or null,
-              "Passed_IAT": boolean,
-              "General_Comments": string or null,
-
-              "User_Story_Created": boolean or null
-            }
-
-            Each object in "Automation_Triggers" represents one IF row and must have exactly these keys:
-            {
-              "Trigger_Number": number (sequential, starting at 1),
-              "Name_of_Trigger_Application": string or null,
-              "Is_the_application_a_Zoho_App": "Yes" or "No" or null,
-              "Trigger_Event_Description": string or null (describe the trigger event in detail),
-              "Filters": string or null (multiple filters separated with ';'),
-              "Trigger_Assumptions": string or null,
-              "Hours": number or null
-            }
-
-            Each object in "Standard_Function_Outputs" represents one THEN row and must have exactly these keys:
-            {
-              "Inclusions": string or null,
-              "Exclusions": string or null,
-              "Detailed_Description": string or null,
-              "Estimated_Hours": number or null
-            }
-
-            Special field rules:
-            - "Product_Description1": ALWAYS generate this field when the transcript describes any work
-              to be delivered. Summarize what Aether will build for the client in your own words, phrased like
-              "Aether will create within the Client's Zoho CRM Application Workflows and custom functions that: ..."
-              Only use null if the transcript contains no deliverables at all.
-
-            - "Service_Types": always output exactly ["Custom Functions"] for every product,
-              regardless of what the transcript says.
-
-            Rules for identifying Automation_Triggers and Standard_Function_Outputs:
-            - Triggers are almost never stated with literal "IF/THEN" wording. Treat ANY
-              event-then-action pattern in the transcript as a trigger and output pair.
-              Phrases like "when...", "whenever...", "once...", "after...", "as soon as...",
-              "every time...", "on submission...", "at the end of the month..." all signal triggers.
-            - The EVENT part becomes one Automation_Triggers row.
-              Example: "when a customer places an order" becomes a trigger with
-              Trigger_Event_Description "A customer places an order".
-            - The ACTION part becomes one Standard_Function_Outputs row linked to that trigger
-              via "Select_Trigger".
-              Example: "...send a confirmation email" becomes an output with
-              Detailed_Description "Send a confirmation email to the customer".
-            - One trigger can have multiple outputs. Create one output row per distinct action.
-            - Conditions restricting the event ("only for orders over $500") belong in "Filters".
-            - Unstated things you must presume for the automation to work belong in "Trigger_Assumptions".
-            - Number triggers sequentially starting at 1 WITHIN each product. Trigger numbering
-              restarts for every product, and "Select_Trigger" always refers to a Trigger_Number
-              in the SAME product.
-            - Only use empty arrays if the transcript truly contains no event-then-action
-              behaviour anywhere for that product.
-
-            Rules for multiple products:
-            - Fields discussed once but applying to the whole engagement (example: Deal_ID,
-              Deal_Name_Account_Contact, Project) should be repeated in every product object.
-            - Fields discussed per product (example: Product_Name, hours, delivery rate,
-              reviewer, triggers) belong only to the product they were discussed for.
-            - Do not merge triggers, outputs, hours, or comments from different products together.
-
-            Transcript:
-            """
-            + transcript;
 
         Map<String, Object> requestPayload = Map.of(
             "contents", List.of(
