@@ -1,6 +1,5 @@
 // holds most recently extracted JSON object (the whole { Products: [...] })
 let lastJSON = null;
-var sendJson = null;
 // Fields stored in arrays for mapping elements of same type
 // maps each JSON key to the form element's id.
 const textField = ["Deal_ID", "What_is_the_name_of_this_Product", "Product_Description1",
@@ -10,11 +9,109 @@ const textField = ["Deal_ID", "What_is_the_name_of_this_Product", "Product_Descr
 const Checkboxes = ["Passed_IAT", "User_Story_Created"];
 
 const DateFields = ["Latest_Review_Date"];
+//DeliveryRate needed
+const Dropdowns = ["ReviewerApprover"];
+
+// Default
+const DEFAULT_STANDARD_SERVICE = "4003860000000356135";
+
+// Standard service names loaded from Zoho instead of hardcoding them
+//let StandardServicesOptions = [DEFAULT_STANDARD_SERVICE];
+
+// tracks the fetch so extract() / extractFromVideo() can wait for it
+let standardServicesReady = null;
+
+async function loadStandardServices() {
+    standardServicesReady = fetch('/standard-services')
+        .then(res => res.json())
+        .then(data => {
+            const products = (data && data.data) || [];
+            //console.log("Products: " + products);
+            StandardServicesOptions = new Map();
+            products.forEach(p => {
+                if (!p.ID) {
+                    return;
+                }
+                if (!StandardServicesOptions.has(p.ID)) {
+                    StandardServicesOptions.set(p.ID, p.Output_Name);
+                }
+            });
+        })
+        .then(() => console.log('Standard Services' + StandardServicesOptions))
+        .catch(err => {
+            console.error('Could not load standard services, using fallback only:', err);
+        });
+}
 
 // which product is currently loaded into the form.
 // Ive assigned them (and im using them) as an index and treated them as sigle objects
 let currentProduct = 0;
 
+// On page load, ask server whether a Gemini key is already saved for this session and
+// indicate in the status line. Only returns boolean (not the key)
+document.addEventListener('DOMContentLoaded', () => {
+    refreshGeminiKeyStatus();
+})
+
+async function refreshGeminiKeyStatus() {
+    const statusEl = document.getElementById('geminiKeyStatus');
+    try {
+        const res = await fetch('/gemini-key/status');
+        const data = await res.json();
+        statusEl.textContent = data.hasKey
+            ? 'A Gemini API key is saved for this session.'
+            : 'No Gemini API key saved yet. Paste Gemini API key and click "Save Key".';
+    } catch (err) {
+        statusEl.textContent = 'Could not check Gemini API key status.';
+    }
+}
+
+// triggered by the "Save Key" button. Sends whatever is in the field to the server (POST /gemini-key),
+// which stores it in this login session. On success, the field is cleared immediately so the plaintext key
+// is no longer present in the page. Only the server session holds it. Paste a different key and click
+// "Save Key" again anytime in the same session to replace it.
+async function saveGeminiKey() {
+    const input = document.getElementById('geminiApiKey');
+    const geminiApiKey = input.value.trim();
+
+    if (!geminiApiKey) {
+        setStatus('Paste a Gemini API key first.');
+        return;
+    }
+
+    try {
+        const res = await fetch('/gemini-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ geminiApiKey: geminiApiKey })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Could not save Gemini API key.');
+        }
+
+        // Clear the field now that the key is in the session
+        input.value = '';
+        setStatus('Gemini API key saved for this session.');
+        refreshGeminiKeyStatus();
+    } catch (err) {
+        setStatus('Error: ' + err.message);
+        console.error(err);
+    }
+}
+
+// triggered by the "Clear key" button. Empties the field and tells the server to drop
+// the key from the session (POST /gemini-key/clear), without logging the user out
+async function clearGeminiKey() {
+    document.getElementById('geminiApiKey').value = '';
+    try {
+        await fetch('/gemini-key/clear', { method: 'POST' });
+    } catch (err) {
+        console.error('Failed to clear Gemini API key on the server: ', err);
+    }
+    setStatus('Gemini API key cleared.');
+    refreshGeminiKeyStatus();
+}
 
 // triggered by the "Extract JSON" button
 async function extract() {
@@ -26,6 +123,11 @@ async function extract() {
     }
 
     setStatus('Calling Gemini...');
+
+    // to make sure the standard services list has finished
+    if (standardServicesReady) {
+        await standardServicesReady;
+    }
 
     try {
         // A Post request to /extract endpoint
@@ -43,17 +145,6 @@ async function extract() {
         if (!res.ok) {
             throw new Error(data.error || 'Request failed.');
         }
-
-        // // Check to make sure Gemini returned a candidate result.
-        // if (!data.candidates || !data.candidates[0]) {
-        //     throw new Error('Gemini returned no result. Try again or shorten the transcript.');
-        // }
-        // const raw = data.candidates[0].content.parts[0].text;
-        // // log raw text to inspect formatting issues
-        // console.log('Raw Gemini text:', raw);
-
-        // // strip markdown code so the string can be parsed as valid JSON and trim whitespace
-        // const clean = raw.replace(/```json|```/g, '').trim();
 
         // convert clean string to JS object
         lastJSON = parseGeminiResponse(data);
@@ -92,19 +183,12 @@ function parseGeminiResponse(data) {
     // log raw text and finish reason to inspect formatting issues
     console.log('Gemini finishReason:', candidate.finishReason);
     console.log('Raw Gemini text:', raw);
-    sendJson = raw;
-    console.log(sendJson);
     // strip markdown code fences so the string can be parsed as valid JSON
     const clean = raw.replace(/```json|```/g, '').trim();
     try {
         // convert clean string to JS object
         return JSON.parse(clean);
     } catch (err) {
-        // show the raw text on the page so the failure point can be inspected
-        // const output = document.getElementById('jsonOutput');
-        // if (output) {
-        //     output.textContent = 'PARSE FAILED. Raw Gemini output below:\n\n' + raw;
-        // }
         if (candidate.finishReason === 'MAX_TOKENS') {
             throw new Error('Gemini hit its output token limit, the JSON is cut off. Shorten the transcript or raise maxOutputTokens.');
         }
@@ -113,12 +197,12 @@ function parseGeminiResponse(data) {
 }
 
 // Print extracted JSON object into #jsonOutput block on the page
-// function showJSON(obj) {
-//     const output = document.getElementById('jsonOutput');
-//     if (output) {
-//         output.textContent = JSON.stringify(obj, null, 2);
-//     }
-// }
+function showJSON(obj) {
+    const output = document.getElementById('jsonOutput');
+    if (output) {
+        output.textContent = JSON.stringify(obj, null, 2);
+    }
+}
 
 // triggered by the "Submit File" button (still in progress)
 async function extractFromVideo() {
@@ -132,6 +216,11 @@ async function extractFromVideo() {
     }
 
     setStatus('Extracting data...');
+
+    // to make sure the standard services list has finished loading 
+    if (standardServicesReady) {
+        await standardServicesReady;
+    }
 
     const formData = new FormData();
     formData.append("file", file);
@@ -165,10 +254,9 @@ async function extractFromVideo() {
         // convert clean string to JS object
         lastJSON = JSON.parse(clean);
 
-        // fillForm(lastJSON);
-        // showJSON(lastJSON);
+        showJSON(lastJSON);
+        selectProduct(lastJSON);
         setStatus('Extraction complete. Review the JSON below.');
-        // setStatus('Form has been filled. Review before submitting.');
     } catch (err) {
         console.error('Video extraction failed:', err);
         setStatus(err.message || 'Something went wrong.');
@@ -209,7 +297,7 @@ function ProductChosen() {
     saveFormToProduct(currentProduct);          // Function I wrote below that saves any changes/ edits on current product before switching to a different product
     const productSelected = document.getElementById('productSelected');
     currentProduct = parseInt(productSelected.value, 10);
-    fillForm(lastJSON.Products[currentProduct]);
+    fillForm(lastJSON.data[currentProduct]);
 }
 
 
@@ -249,16 +337,28 @@ function fillForm(map) {
     });
 
     // We are always setting the Service type to be "Custom Functions"(we need it for the IF and THENs)
-    const Custom = document.getElementById("ServiceType");
-    if (Custom) {
-        Custom.value = "Custom Functions";
-    }
+    // const Custom = document.getElementById("ServiceType");
+    // if (Custom) {
+    //     Custom.value = "Custom Functions";
+    // }
 
     // Map THE dropdown fields. It is set only if the value is one of the allowed options. Otherwise, it is left as the default option
-    setDropdown("Project", map.Project);
-    setDropdown("DealNameAccountContact", map.Deal_Name_Account_Contact);
-    setDropdown("DeliveryRate", map.Delivery_Rate);
-    setDropdown("ReviewerApprover", map.Reviewer_Approver);
+    // setDropdown("Project", map.Project);
+    // setDropdown("DealNameAccountContact", map.Deal_Name_Account_Contact);
+    const service = document.getElementById("Service_Types");
+    if (service) {
+        service.value = "Custom Functions"
+    }
+
+    const select = document.getElementById("dealSelect");
+    if (select) {
+        select.value = map.Deal_ID || '';
+    }
+
+    const dealIdField = document.getElementById("Deal_ID");
+    if (dealIdField) {
+        dealIdField.value = map.Deal_ID || '';
+    }
 
     // creates the IFs and THENs tables for the product
     AutomationTriggerTable(map.Automation_Triggers || []);
@@ -325,7 +425,7 @@ function addThenEntry(entry) {
     const row = document.createElement('tr');
 
     const triggerCell = CreateTextInput(entry.Select_Trigger);
-    const servicesCell = CreateTextInput(entry.Standard_Services);
+    const servicesCell = makeServiceDropdownCell(entry.Standard_Services);
     const inclCell = CreateTextArea(entry.Inclusions);
     const exclCell = CreateTextArea(entry.Exclusions);
     const descCell = CreateTextArea(entry.Detailed_Description);
@@ -350,6 +450,7 @@ function CreateTextInput(entry) {
     input.type = 'text';
     input.className = 'form-control';
     if (entry != null) input.value = entry;
+    input.oninput = saveEdits;              // save into the JSON whenever the user types in this cell
     td.appendChild(input);
     return td;
 }
@@ -361,6 +462,7 @@ function CreateTextArea(entry) {
     area.className = 'form-control';
     area.rows = 2;
     if (entry != null) area.value = entry;
+    area.oninput = saveEdits;               // save into the JSON whenever the user types in this cell
     td.appendChild(area);
     return td;
 }
@@ -375,6 +477,35 @@ function makeYesNoCell(entry) {
         '<option value="Yes">Yes</option>' +
         '<option value="No">No</option>';
     if (entry != null) select.value = entry;
+    select.onchange = saveEdits;            // save into the JSON when the user picks Yes/No
+    td.appendChild(select);
+    return td;
+}
+
+// a dropdown listing Zoho's standard service names
+// Defaults to "Unique Automation (or service not listed below)" if the value is missing or doesn't match.
+function makeServiceDropdownCell(entry) {
+    const td = document.createElement('td');
+    const select = document.createElement('select');
+    select.className = 'form-select';
+
+    // build one <option> per known standard service
+    let optionsHtml = '';
+    StandardServicesOptions.forEach((name, id) => {
+        optionsHtml += `<option value = "${id}" >  ${name}  </option>`;
+    });
+    select.innerHTML = optionsHtml;
+
+    const saveId = entry && typeof entry === 'object' ? entry.ID : entry;
+
+    // pick the matching option, or fall back to the default catch-all
+    if (saveId != null && StandardServicesOptions.has(saveId)) {
+        select.value = saveId;
+    } else {
+        select.value = DEFAULT_STANDARD_SERVICE;
+    }
+
+    select.onchange = saveEdits;            // save into the JSON when the user picks a service
     td.appendChild(select);
     return td;
 }
@@ -389,10 +520,39 @@ function DeleteCellButton() {
     button.onclick = function () {
         const row = button.parentElement.parentElement;
         row.remove();
+        saveEdits();                        // save the JSON again now that the row is gone
     };
     td.appendChild(button);
     return td;
 }
+
+
+// Runs once when the page loads.
+// Adds a listener to every form field so that any edit the user makes is saved into lastJSON right away
+function FieldListner() {
+    textField.forEach(key => addSaveListener(key));
+    Checkboxes.forEach(key => addSaveListener(key));
+    DateFields.forEach(key => addSaveListener(key));
+    Dropdowns.forEach(key => addSaveListener(key));
+}
+
+// attaches the save function to one field, found by its id
+function addSaveListener(id) {
+    const element = document.getElementById(id);
+    if (!element) return;
+    element.oninput = saveEdits;            // fires while typing in a text box
+    element.onchange = saveEdits;           // fires for checkboxes and dropdowns
+}
+
+// Saves the form into the JSON and prints the updated JSON so we can review it
+function saveEdits() {
+    saveFormToProduct(currentProduct);
+    showJSON(lastJSON);
+    //console.log('Updated JSON after edit:', JSON.stringify(lastJSON, null, 2));
+}
+
+// run the listener
+window.addEventListener('DOMContentLoaded', FieldListner);
 
 
 // Function that saves any changes made to the web pages fields so that when we flip to different product the edits still remain
@@ -429,7 +589,7 @@ function saveFormToProduct(index) {
     // the drop downs
     product.Project = readValue("Project");
     product.Deal_Name_Account_Contact = readValue("DealNameAccountContact");
-    product.Delivery_Rate = readValue("DeliveryRate");
+    product.Delivery_Rate = readValue("Delivery_Rate");
     product.Reviewer_Approver = readValue("ReviewerApprover");
     product.Service_Types = ["Custom Functions"];
 
@@ -536,7 +696,9 @@ function copyJSON() {
 function setStatus(msg) {
     document.getElementById('status').textContent = msg;
 }
-
+function setZohoStatus(msg) {
+    document.getElementById('zohoStatus').textContent = msg;
+}
 // logout
 async function logout() {
     try {
@@ -557,14 +719,116 @@ async function sendJsonToZoho() {
 
     // save edits from the form on screen before sending
     saveFormToProduct(currentProduct);
-    // showJSON(lastJSON);
 
-    const res = await fetch('/send-to-service', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: sendJson
+    const dealId = document.getElementById('dealSelect').value;
+    if (!dealId) {
+        setStatus('Select a deal first.');
+        return;
+    }
 
-    });
-    const result = await res.json();
-    setStatus(result.code === 3000 ? 'Message sent successfully' : 'Fail: ' + JSON.stringify(result));
+    // lastJSON.data.forEach(product => {
+    //     product.Deal_ID = dealId;
+    //     product.Deal_Name = dealId;
+    // })
+
+    const payload = { data: lastJSON.data };
+    setZohoStatus('Sending to Zoho...');
+
+    try {
+        const res = await fetch('/send-to-service', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+
+        });
+        const result = await res.json();
+        setZohoStatus(result.code === 3000 ? 'Message sent successfully' : 'Fail: ' + JSON.stringify(result));
+    } catch (err) {
+        setZohoStatus('Error: ' + err.message);
+    }
+
+
 }
+async function zohoPreview() {
+    if (!lastJSON) {
+        setStatus('Enter the Transcript.');
+        return;
+    }
+
+    // save edits from the form on screen before sending
+    saveFormToProduct(currentProduct);
+
+    const dealId = document.getElementById('dealSelect').value;
+
+    if (!dealId) {
+        setStatus('Select a deal first.');
+        return;
+    }
+
+    const product = lastJSON.data[currentProduct];
+    product.Deal_ID = dealId;
+    product.Deal_Name = dealId;
+
+    // lastJSON.data.forEach(product => {
+    //     product.Deal_ID = dealId;
+    //     product.Deal_Name = dealId;
+    // })
+
+    const payload = { data: lastJSON.data };
+    console.log(JSON.stringify(payload, null, 2));
+
+
+}
+
+async function getProjectNameID() {
+    const res = await fetch('/deals');
+    const deal = await res.json();
+
+    const deals = new Map();
+
+    deal.data.forEach(d => {
+        if (!d.Integration) return;
+        if (d.Integration.ID) {
+            deals.set(d.Integration.ID, d.Integration.zc_display_value);
+        }
+    });
+
+    const select = document.getElementById('dealSelect');
+    select.innerHTML = '<option value="">-- Select -- </option>';
+    deals.forEach((name, id) => {
+        select.innerHTML += `<option value ="${id}">${name} ${id} </option>`;
+    });
+
+    document.getElementById('dealSelect').addEventListener('change', (event) => {
+        const id = document.getElementById('Deal_ID');
+        if (id) {
+            id.value = event.target.value;
+        }
+        if (lastJSON && lastJSON.data && lastJSON.data[currentProduct]) {
+            lastJSON.data[currentProduct].Deal_ID = event.target.value;
+            lastJSON.data[currentProduct].Deal_Name = event.target.value;
+        }
+    });
+    // deal.data.forEach(d => {
+    //     if (!d.Deal_ID || !d.Deal_Name || !d.Deal_Name.Account_Name) return;
+    //     if (d.Deal_ID) {
+    //         deals.set(d.Deal_Name.Potential_Name, d.Deal_Name.ID, d.Deal_Name.Account_Name);
+    //     }
+    // });
+
+    // const select = document.getElementById('dealSelect');
+    // select.innerHTML = '<option value="">-- Select -- </option>';
+    // deals.forEach((deal, name, id) => {
+    //     select.innerHTML += `<option value ="${id}">${deal} ${id} ${name}</option>`;
+    // });
+
+    // document.getElementById('dealSelect').addEventListener('change', (event) => {
+    //     const id = document.getElementById('Deal_ID');
+    //     if (id) {
+    //         id.value = event.target.value;
+    //     }
+    // });
+}
+
+getProjectNameID();
+loadStandardServices();
