@@ -167,7 +167,7 @@ async function clearAssemblyKey() {
 // triggered by the "Extract JSON" button
 async function extract() {
     const transcript = document.getElementById('transcript').value.trim();
-    
+
     if (!transcript) {
         setStatus('Paste a transcript first.');
         return;
@@ -176,7 +176,7 @@ async function extract() {
     const formData = new FormData();
     formData.append('transcript', document.getElementById('transcript').value.trim());
 
-    setStatus('Calling Gemini...');
+    setStatus('Extracting...');
 
     // call Gemini to map data to form fields
     await mapTranscript(formData);
@@ -300,7 +300,7 @@ async function uploadToAssemblyAI(file) {
     }
 
     // return the temporary URL AssemblyAI generated
-    return data.upload_url; 
+    return data.upload_url;
 }
 
 // triggered by the "Create Transcript" button
@@ -853,8 +853,8 @@ async function logout() {
 
 // Submit to Zoho: save current form edits into the JSON first, then send everything
 async function sendJsonToZoho() {
-    if (!lastJSON) {
-        setStatus('Enter the Transcript.');
+    if (!lastJSON || !lastJSON.data) {
+        setZohoStatus('Field extraction failed, resubmit transcript');
         return;
     }
 
@@ -863,17 +863,17 @@ async function sendJsonToZoho() {
 
     const dealId = document.getElementById('dealSelect').value;
     if (!dealId) {
-        setStatus('Select a deal first.');
+        setZohoStatus('Select account and deal id');
+        return;
+    }
+    const missingDeal = getMissingDeal();
+    if (missingDeal.length > 0) {
+        setZohoStatus(`Select a deal for: ` + missingDeal.join(', '));
         return;
     }
 
-    // lastJSON.data.forEach(product => {
-    //     product.Deal_ID = dealId;
-    //     product.Deal_Name = dealId;
-    // })
-
     const payload = { data: lastJSON.data };
-    setZohoStatus('Sending to Zoho...');
+    setZohoStatus('Sending to Product Creator...');
 
     try {
         const res = await fetch('/send-to-service', {
@@ -883,13 +883,26 @@ async function sendJsonToZoho() {
 
         });
         const result = await res.json();
-        setZohoStatus(result.code === 3000 ? 'Message sent successfully' : 'Fail: ' + JSON.stringify(result));
+        setZohoStatus(result.result.map((r, i) => `Product ${i + 1}: ${r.code === 3000 ? 'success' : 'failed'}`).join(', '));
     } catch (err) {
         setZohoStatus('Error: ' + err.message);
     }
-
-
 }
+// Checks for Deal_ID of every product in the JSON. if a product is missing Deal ID it will return the name of the product
+function getMissingDeal() {
+    if (!lastJSON || !lastJSON.data) {
+        return [];
+    }
+    const missingDeal = [];
+    for (let i = 0; i < lastJSON.data.length; i++) {
+        const product = lastJSON.data[i];
+        if (!product.Deal_ID) {
+            missingDeal.push(product.What_is_the_name_of_this_Product || `Product ${i + 1}`);
+        }
+    }
+    return missingDeal;
+}
+
 async function zohoPreview() {
     if (!lastJSON) {
         setStatus('Enter the Transcript.');
@@ -910,17 +923,13 @@ async function zohoPreview() {
     product.Deal_ID = dealId;
     product.Deal_Name = dealId;
 
-    // lastJSON.data.forEach(product => {
-    //     product.Deal_ID = dealId;
-    //     product.Deal_Name = dealId;
-    // })
-
     const payload = { data: lastJSON.data };
     console.log(JSON.stringify(payload, null, 2));
 
-
 }
 
+//Fetches the dealID and name from All Projects of zoho creator
+//Fetches from integration as that had the consistent information about id and name
 async function getProjectNameID() {
     const res = await fetch('/deals');
     const deal = await res.json();
@@ -950,26 +959,9 @@ async function getProjectNameID() {
             lastJSON.data[currentProduct].Deal_Name = event.target.value;
         }
     });
-    // deal.data.forEach(d => {
-    //     if (!d.Deal_ID || !d.Deal_Name || !d.Deal_Name.Account_Name) return;
-    //     if (d.Deal_ID) {
-    //         deals.set(d.Deal_Name.Potential_Name, d.Deal_Name.ID, d.Deal_Name.Account_Name);
-    //     }
-    // });
-
-    // const select = document.getElementById('dealSelect');
-    // select.innerHTML = '<option value="">-- Select -- </option>';
-    // deals.forEach((deal, name, id) => {
-    //     select.innerHTML += `<option value ="${id}">${deal} ${id} ${name}</option>`;
-    // });
-
-    // document.getElementById('dealSelect').addEventListener('change', (event) => {
-    //     const id = document.getElementById('Deal_ID');
-    //     if (id) {
-    //         id.value = event.target.value;
-    //     }
-    // });
 }
 
+// These run when program loads and auto fill the dropdown for Deal name and ID
+// and Standard services in the then section.
 getProjectNameID();
 loadStandardServices();
