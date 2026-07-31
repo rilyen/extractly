@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.RestTemplate;
 
+import com._6.extractly.service.ZohoPromptService;
+
 import jakarta.servlet.http.HttpSession;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -39,9 +41,19 @@ public class ExtractController {
   // use to convert into a valid JSON string
   private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
-  public ExtractController(RestTemplate restTemplate) {
-    this.restTemplate = restTemplate;
-  }
+    // use to get the prompt from Zoho
+    private final ZohoPromptService zohoPromptService;
+
+    public ExtractController(RestTemplate restTemplate, ZohoPromptService zohoPromptService) {
+        this.restTemplate = restTemplate;
+        this.zohoPromptService = zohoPromptService;
+    }
+
+    // redirect or show page based on user role
+    @GetMapping("/")
+    public String index(HttpSession session) {
+        String role = (String) session.getAttribute("role");
+        // Boolean verified = (Boolean) session.getAttribute("verified");
 
   // redirect or show page based on user role
   @GetMapping("/")
@@ -85,46 +97,100 @@ public class ExtractController {
         return ResponseEntity.ok().body(Map.of("transcript", transcribedText));
       }
 
-      // ROUTE 2: Frontend sent text
-      if (transcript != null && !transcript.isBlank()) {
-        String prompt = """
-            You are a data extraction assistant.
-            Read the transcript below and extract every product discussed for the Product Creator form described here.
-            A single transcript can describe MULTIPLE products. Create one product object per distinct
-            product or deliverable discussed.
-            Return ONLY a valid JSON object, no markdown, no explanation, no code fences.
-            If a field is not mentioned in the transcript, set its value to null.
-            For boolean fields (checkboxes), use true or false.
-            For date fields, use DD-MMM-YYYY format (example: 15-Mar-2026).
-            For hours fields, return a plain number with no units.
-            Do not invent values that are not supported by the transcript.
-            "What_is_the_name_of_this_Product" should start with: TEST_G13_VS_(random word here)
-            "Delivery_Rate" has to be: "Normal", "Urgent", "Immediate" only
-            The top-level JSON object must have EXACTLY this structure:
-            Deal ID is empty
-            Deal Name is empty
-            Product cost is in hours if money is in the transcript do not add that value here
+        // Instructions given to Gemini (from Zoho prompt service) with transcript text appended at the end
+        String prompt = zohoPromptService.getPrompt() + "\n\nTranscript:\n" + transcript;
 
-            {
-              "data": [ one product object per product discussed, in the order discussed ]
-            }
+        try {
+            // Build Gemini request payload as a plain java object graph that mirrors the
+            // JSON shape Gemini's API expects:
+            // { "contents": [ { "parts": [ { "text": "..." } ] } ],
+            // "generationConfig": { "temperature": 0.1 } }
+            //
+            // We build it this way so jsonMapper handles translating this structure into
+            // valid JSON text for us
+            // (no matter what characters end up inside "prompt")
+            //
+            // Low temperature is more deterministic, since we want consistent output
+            // responseMimeType "application/json" forces Gemini into strict JSON mode
+            Map<String, Object> requestPayload = Map.of(
+                    "contents", List.of(
+                            Map.of("parts", List.of(
+                                    Map.of("text", prompt)))),
+                    "generationConfig", Map.of(
+                            "temperature", 0.1,
+                            "responseMimeType", "application/json"));
+
+            // Serialize object graph into valid JSON string to send as HTTP request body
+            String requestBody = jsonMapper.writeValueAsString(requestPayload);
+
+            // Tell Gemini outgoing request body is JSON
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            // Gemini REST endpoint with our API key, using gemini 2.5 flash model
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
+                    + geminiApiKey;
+
+            // Send POST request to Gemini with JSON body + header
+            // response is String
+            ResponseEntity<String> geminiResponse = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    new HttpEntity<>(requestBody, headers),
+                    String.class);
+
+            // send Gemini's raw JSON response back to frontend JS (to be parsed into
+            // fields)
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(geminiResponse.getBody());
+
+        } catch (Exception e) {
+            // Return error message for failures
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("{\"error\": \"" + e.getMessage() + "\"}");
+        }
+    }
 
             Each product object must have EXACTLY this structure and these keys:
 
             {
 
-              "Deal_ID": "",
-              "Deal_Name": "",
-              "What_is_the_name_of_this_Product": string,
-              "Product_Description1": string or null,
-              "Delivery_Rate": string,
-              "Service_Types": ["Custom Functions"],
-              "Automation_Triggers": array of trigger objects (see below),
-              "Standard_Function_Outputs": array of output objects (see below),
-              "Product_Cost": number or null,
-              "Calculate_Hours": true,
-              "Generate_Product_Description": true,
-              "Estimated_Duration_to_Implement_days": number or null,
+        // Instructions given to Gemini (from Zoho prompt service) with transcript text appended at the end
+        String prompt = zohoPromptService.getPrompt() + "\n\nTranscript:\n" + transcript;
+
+        try {
+            Map<String, Object> requestPayload = Map.of(
+                    "contents", List.of(
+                            Map.of("parts", List.of(
+                                    Map.of("text", prompt)))),
+                    "generationConfig", Map.of(
+                            "temperature", 0.1,
+                            "responseMimeType", "application/json"));
+
+            String requestBody = jsonMapper.writeValueAsString(requestPayload);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
+                    + geminiApiKey;
+
+            ResponseEntity<String> geminiResponse = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    new HttpEntity<>(requestBody, headers),
+                    String.class);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(geminiResponse.getBody());
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("{\"error\": \"" + e.getMessage() + "\"}");
+        }
+    }
 
               "Latest_Review_Date": string or null,
               "Passed_IAT": boolean,
