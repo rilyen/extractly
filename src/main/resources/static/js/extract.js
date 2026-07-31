@@ -115,7 +115,8 @@ async function clearGeminiKey() {
 
 // triggered by the "Extract JSON" button
 async function extract() {
-    const transcript = document.getElementById('transcript').value.trim();
+    const formData = new FormData();
+    formData.append('transcript', document.getElementById('transcript').value.trim());
 
     if (!transcript) {
         setStatus('Paste a transcript first.');
@@ -124,6 +125,12 @@ async function extract() {
 
     setStatus('Calling Gemini...');
 
+    // call Gemini to map data to form fields
+    await mapTranscript(formData);
+}
+
+
+async function mapTranscript(formData) {
     // to make sure the standard services list has finished
     if (standardServicesReady) {
         await standardServicesReady;
@@ -134,8 +141,7 @@ async function extract() {
         // Backend controller returns a JSON object response
         const res = await fetch('/extract', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ transcript: transcript })
+            body: formData,
         });
 
         // parse response body as JSON
@@ -195,18 +201,56 @@ function showJSON(obj) {
     }
 }
 
-// triggered by the "Submit File" button (still in progress)
-async function extractFromVideo() {
-
+// gets the selceted video and uploads it
+function getVideoFile() {
     const fileInput = document.getElementById("videoInput");
     const file = fileInput.files[0];
 
     if (!file) {
         alert("Please select an mp4 file first.");
-        return;
+        return null;
     }
 
-    setStatus('Extracting data...');
+    return file
+}
+
+async function uploadToAssemblyAI(file) {
+    // fetch AssemblyAI API key 
+    const keyRes = await fetch('/api/assembly-key');
+    const { apiKey } = await keyRes.json();
+
+    if (!keyRes.ok) throw new Error('Failed to fetch API key');
+
+    // upload straight from the browser to AssemblyAI
+    const uploadRes = await fetch('https://api.assemblyai.com/v2/upload', {
+        method: 'POST',
+        headers: {
+            'Authorization': apiKey,
+            'Content-Type': 'application/octet-stream'
+        },
+        body: file
+    });
+
+    const data = await uploadRes.json();
+
+    if (!uploadRes.ok) {
+        throw new Error(data.error || 'AssemblyAI upload failed');
+    }
+
+    // return the temporary URL AssemblyAI generated
+    return data.upload_url; 
+}
+
+// triggered by the "Create Transcript" button
+// AssemblyAI creates a trancript. Transcript is placed in a text box for review
+async function createTranscriptFromVideo() {
+    // get the selected video file
+    const file = getVideoFile();
+
+    // if getVideoFile() returned null, stop this function immediately
+    if (!file) return;
+
+    setStatus('Transcribing video...');
 
     // to make sure the standard services list has finished loading 
     if (standardServicesReady) {
@@ -217,7 +261,19 @@ async function extractFromVideo() {
     formData.append("file", file);
 
     try {
-        const res = await fetch("/extract-from-video", {
+        setStatus('Uploading to AssemblyAI...this may take a few minutes.');
+
+        // upload MP4 file to AssemblyAI
+        const videoUrl = await uploadToAssemblyAI(file);
+
+        setStatus('Transcribing video...');
+
+        // package the new URL string
+        const formData = new FormData();
+        formData.append("videoUrl", videoUrl);
+
+
+        const res = await fetch("/extract", {
             method: "POST",
             body: formData,
         });
@@ -230,29 +286,61 @@ async function extractFromVideo() {
             throw new Error(data.error || 'Request failed.');
         }
 
-        // Check to make sure Gemini returned a candidate result.
-        if (!data.candidates || !data.candidates[0]) {
-            throw new Error('Gemini returned no result. Try again or shorten the transcript.');
-        }
+        // Place tthe returned transcript into the text box for review
+        document.getElementById("transcript").value = data.transcript;
 
-        const raw = data.candidates[0].content.parts[0].text;
-        // log raw text to inspect formatting issues
-        console.log('Raw Gemini text:', raw);
-
-        // strip markdown code so the string can be parsed as valid JSON and trim whitespace
-        const clean = raw.replace(/```json|```/g, '').trim();
-
-        // convert clean string to JS object
-        lastJSON = JSON.parse(clean);
-
-        showJSON(lastJSON);
-        selectProduct(lastJSON);
-        setStatus('Extraction complete. Review the JSON below.');
+        setStatus('Transcript generated successfully! Review the text below.');
     } catch (err) {
-        console.error('Video extraction failed:', err);
+        console.error('Video transcription failed:', err);
         setStatus(err.message || 'Something went wrong.');
     }
 
+}
+
+async function autoFillFromVideo() {
+    // get the selected video file
+    const file = getVideoFile();
+
+    // If getVideoFile() returned null, stop this function immediately
+    if (!file) return;
+
+    try {
+        setStatus('Uploading to AssemblyAI...this may take a few minutes');
+
+        // upload MP4 file to AssemblyAI
+        const videoUrl = await uploadToAssemblyAI(file);
+
+        setStatus('Video uploaded! Extracting transcript...');
+
+        // package the new URL string
+        const formData = new FormData();
+        formData.append("videoUrl", videoUrl);
+
+        const res = await fetch("/extract", {
+            method: "POST",
+            body: formData,
+        });
+
+        // parse response body as JSON
+        const data = await res.json();
+
+        // if request fails throw to catch block below
+        if (!res.ok) {
+            throw new Error(data.error || 'Request failed.');
+        }
+
+        setStatus('Calling Gemini...');
+
+        const textFormData = new FormData();
+        textFormData.append('transcript', data.transcript);
+
+        // call Gemini to map data to form fields
+        await mapTranscript(textFormData);
+
+    } catch (err) {
+        console.error('Autofill failed:', err);
+        setStatus(err.message || 'Something went wrong.');
+    }
 }
 
 
