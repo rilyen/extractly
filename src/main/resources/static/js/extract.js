@@ -51,6 +51,7 @@ let currentProduct = 0;
 // indicate in the status line. Only returns boolean (not the key)
 document.addEventListener('DOMContentLoaded', () => {
     refreshGeminiKeyStatus();
+    refreshAssemblyKeyStatus();
 })
 
 async function refreshGeminiKeyStatus() {
@@ -63,6 +64,19 @@ async function refreshGeminiKeyStatus() {
             : 'No Gemini API key saved yet. Paste Gemini API key and click "Save Key".';
     } catch (err) {
         statusEl.textContent = 'Could not check Gemini API key status.';
+    }
+}
+
+async function refreshAssemblyKeyStatus() {
+    const statusEl = document.getElementById('assemblyKeyStatus');
+    try {
+        const res = await fetch('/assembly-key/status');
+        const data = await res.json();
+        statusEl.textContent = data.hasKey
+            ? 'An AssemblyAI API key is saved for this session.'
+            : 'No AssemblyAI API key saved yet. Paste AssemblyAI API key and click "Save Key".';
+    } catch (err) {
+        statusEl.textContent = 'Could not check AssemblyAI API key status.';
     }
 }
 
@@ -100,6 +114,32 @@ async function saveGeminiKey() {
     }
 }
 
+async function saveAssemblyKey() {
+    const input = document.getElementById('assemblyAiApiKey');
+    const assemblyAiApiKey = input.value.trim();
+    if (!assemblyAiApiKey) {
+        setStatus('Paste an AssemblyAI API key first.');
+        return;
+    }
+    try {
+        const res = await fetch('/assembly-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assemblyAiApiKey: assemblyAiApiKey })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Could not save AssemblyAI API key.');
+        }
+        input.value = '';
+        setStatus('AssemblyAI API key saved for this session.');
+        refreshAssemblyKeyStatus();
+    } catch (err) {
+        setStatus('Error: ' + err.message);
+        console.error(err);
+    }
+}
+
 // triggered by the "Clear key" button. Empties the field and tells the server to drop
 // the key from the session (POST /gemini-key/clear), without logging the user out
 async function clearGeminiKey() {
@@ -111,6 +151,17 @@ async function clearGeminiKey() {
     }
     setStatus('Gemini API key cleared.');
     refreshGeminiKeyStatus();
+}
+
+async function clearAssemblyKey() {
+    document.getElementById('assemblyAiApiKey').value = '';
+    try {
+        await fetch('/assembly-key/clear', { method: 'POST' });
+    } catch (err) {
+        console.error('Failed to clear AssemblyAI API key on the server: ', err);
+    }
+    setStatus('AssemblyAI API key cleared.');
+    refreshAssemblyKeyStatus();
 }
 
 // triggered by the "Extract JSON" button

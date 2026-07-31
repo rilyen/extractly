@@ -67,6 +67,27 @@
       </div>
 
       <div class="mb-3">
+        <div class="card mb-4">
+          <div class="card-body">
+            <label for="assemblyAiApiKey" class="form-label fw-semibold">
+              AssemblyAI API Key <span class="text-danger">(required)</span>
+            </label>
+            <div class="d-flex gap-2 mb-1">
+              <input type="password" id="assemblyAiApiKey" class="form-control"
+                placeholder="Paste your AssemblyAI API key" autocomplete="off" />
+              <button type="button" id="saveAssemblyKeyBtn" onclick="saveAssemblyKey()" class="btn btn-primary">
+                Save Key
+              </button>
+              <button type="button" id="clearAssemblyKeyBtn" onclick="clearAssemblyKey()" class="btn btn-outline-danger">
+                Clear Key
+              </button>
+            </div>
+            <div id="assemblyKeyStatus" class="form-text">Checking key status...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
         <!-- MP4 file input box -->
         <div class="card mb-4">
                     <div class="card-body">

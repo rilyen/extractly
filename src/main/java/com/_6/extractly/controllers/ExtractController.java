@@ -38,8 +38,11 @@ public class ExtractController {
   private static final String SESSION_GEMINI_KEY_ATTR = "geminiApiKey";
 
   // API key for AssemblyAI
-  @Value("${assemblyai.api.key}")
-  private String assemblyAiApiKey;
+  // @Value("${assemblyai.api.key}")
+  // private String assemblyAiApiKey;
+  
+  // NOTE: same approach as geminiApiKey above
+  private static final String SESSION_ASSEMBLY_KEY_ATTR = "assemblyAiApiKey";
 
   // use to send HTTP request to Gemini and AssemblyAI's REST API
   private final RestTemplate restTemplate;
@@ -90,6 +93,19 @@ public class ExtractController {
       return ResponseEntity.ok("{\"message\":\"Gemini API key saved for this session.\"}");
     }
 
+    // Handles POST /assembly-key
+    @PostMapping("/assembly-key")
+    @ResponseBody
+    public ResponseEntity<String> saveAssemblyKey(@RequestBody Map<String, String> body, HttpSession session) {
+      
+        String assemblyAiApiKey = body.get("assemblyAiApiKey");
+        if (assemblyAiApiKey == null || assemblyAiApiKey.isBlank()) {
+          return ResponseEntity.badRequest().body("{\"error\":\"AssemblyAI API key is required.\"}");
+        }
+        session.setAttribute(SESSION_ASSEMBLY_KEY_ATTR, assemblyAiApiKey);
+        return ResponseEntity.ok("{\"message\":\"AssemblyAI API key saved for this session.\"}");
+    }  
+
     // Handles Post/gemini-key/clear
     // Frontend class this when the user clicks "Clear key". Removes just the
     // Gemini key attribute from the session (the rest of the login session is untouched
@@ -101,6 +117,14 @@ public class ExtractController {
       return ResponseEntity.ok("{\"message\":\"Gemini API key cleared.\"}");
     }
 
+    // Handles POST /assembly-key/clear
+    @PostMapping("/assembly-key/clear")
+    @ResponseBody
+    public ResponseEntity<String> clearAssemblyKey(HttpSession session) {
+        session.removeAttribute(SESSION_ASSEMBLY_KEY_ATTR);
+        return ResponseEntity.ok("{\"message\":\"AssemblyAI API key cleared.\"}");
+    }
+
     // Handles GET /gemini-key/status
     // lets the frontend show "a key is currently saved" / "no key saved" without
     // exposing the key's actual value
@@ -109,6 +133,14 @@ public class ExtractController {
     public ResponseEntity<String> geminiKeyStatus(HttpSession session) {
       boolean hasKey = session.getAttribute(SESSION_GEMINI_KEY_ATTR) != null;
       return ResponseEntity.ok("{\"hasKey\": " + hasKey + "}");
+    }
+
+    // Handles GET /assembly-key/status
+    @GetMapping("/assembly-key/status")
+    @ResponseBody
+    public ResponseEntity<String> assemblyKeyStatus(HttpSession session) {
+        boolean hasKey = session.getAttribute(SESSION_ASSEMBLY_KEY_ATTR) != null;
+        return ResponseEntity.ok("{\"hasKey\": " + hasKey + "}");
     }
 
   // Handles POST /extract
@@ -133,7 +165,13 @@ public class ExtractController {
     try {
       // ROUTE 1: Frontend sent a video URL
       if (videoUrl != null && !videoUrl.isEmpty()) {
-        String transcribedText = transcribeFromUrl(videoUrl);
+
+        String assemblyAiApiKey = (String) session.getAttribute(SESSION_ASSEMBLY_KEY_ATTR);
+        if (assemblyAiApiKey == null || assemblyAiApiKey.isBlank()) {
+          return ResponseEntity.badRequest().body("{\"error\":\"AssemblyAI API key is required.\"}");
+        }
+
+        String transcribedText = transcribeFromUrl(videoUrl, assemblyAiApiKey);
         ;
         System.out.println("=== TRANSCRIPT ===\n" + transcribedText);
 
@@ -185,7 +223,7 @@ public class ExtractController {
     }
   }
 
-  private String transcribeFromUrl(String videoUrl) throws InterruptedException {
+  private String transcribeFromUrl(String videoUrl, String assemblyAiApiKey) throws InterruptedException {
     HttpHeaders headers = new HttpHeaders();
     headers.set("Authorization", assemblyAiApiKey);
     headers.setContentType(MediaType.APPLICATION_JSON);
@@ -219,7 +257,13 @@ public class ExtractController {
 
   @GetMapping("/api/assembly-key")
   @ResponseBody
-  public ResponseEntity<?> getAssemblyKey() {
+  public ResponseEntity<?> getAssemblyKey(HttpSession session) {
+
+    String assemblyAiApiKey = (String) session.getAttribute(SESSION_ASSEMBLY_KEY_ATTR);
+    if (assemblyAiApiKey == null || assemblyAiApiKey.isBlank()) {
+      return ResponseEntity.badRequest().body(Map.of("error", "AssemblyAI API key is required."));
+    }
+
     // Returns your key as a simple JSON object: {"apiKey": "your-key-here"}
     return ResponseEntity.ok(Map.of("apiKey", assemblyAiApiKey));
   }
