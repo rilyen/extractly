@@ -240,8 +240,7 @@ function parseGeminiResponse(data) {
     const parts = (candidate.content && candidate.content.parts) || [];
     const raw = parts.map(p => p.text || '').join('');
     // log raw text and finish reason to inspect formatting issues
-    console.log('Gemini finishReason:', candidate.finishReason);
-    console.log('Raw Gemini text:', raw);
+
     // strip markdown code fences so the string can be parsed as valid JSON
     const clean = raw.replace(/```json|```/g, '').trim();
     try {
@@ -323,7 +322,7 @@ async function createTranscriptFromVideo() {
     formData.append("file", file);
 
     try {
-        setStatus('Uploading to AssemblyAI...this may take a few minutes.');
+        setStatus('Uploading... this may take a few minutes.');
 
         // upload MP4 file to AssemblyAI
         const videoUrl = await uploadToAssemblyAI(file);
@@ -367,7 +366,7 @@ async function autoFillFromVideo() {
     if (!file) return;
 
     try {
-        setStatus('Uploading to AssemblyAI...this may take a few minutes');
+        setStatus('Uploading... this may take a few minutes');
 
         // upload MP4 file to AssemblyAI
         const videoUrl = await uploadToAssemblyAI(file);
@@ -391,7 +390,7 @@ async function autoFillFromVideo() {
             throw new Error(data.error || 'Request failed.');
         }
 
-        setStatus('Calling Gemini...');
+        setStatus('Filling Form...');
 
         const textFormData = new FormData();
         textFormData.append('transcript', data.transcript);
@@ -822,15 +821,6 @@ function dateFormat(set_date) {
     const month = parts.find(key => key.type === "month").value;
     const year = parts.find(key => key.type === "year").value;
     return `${day}-${month}-${year}`;
-}
-
-
-// triggered by the "Copy" button
-function copyJSON() {
-    if (!lastJSON) return;
-    navigator.clipboard.writeText(JSON.stringify(lastJSON, null, 2))
-        .then(() => setStatus('Copied to clipboard!'))
-        .catch(() => setStatus('Could not copy.'));
 }
 
 // update status message shown to the user
