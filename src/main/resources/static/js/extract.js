@@ -225,7 +225,7 @@ async function mapTranscript(formData) {
         setStatus('Extraction complete. Review and edit before submitting.');
 
     } catch (err) {
-        setStatus('Error: ' + err.message);
+        setStatus('Error: Try again later');
         console.error(err);
     }
 }
