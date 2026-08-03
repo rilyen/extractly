@@ -51,6 +51,7 @@ let currentProduct = 0;
 // indicate in the status line. Only returns boolean (not the key)
 document.addEventListener('DOMContentLoaded', () => {
     refreshGeminiKeyStatus();
+    refreshAssemblyKeyStatus();
 })
 
 async function refreshGeminiKeyStatus() {
@@ -63,6 +64,19 @@ async function refreshGeminiKeyStatus() {
             : 'No Gemini API key saved yet. Paste Gemini API key and click "Save Key".';
     } catch (err) {
         statusEl.textContent = 'Could not check Gemini API key status.';
+    }
+}
+
+async function refreshAssemblyKeyStatus() {
+    const statusEl = document.getElementById('assemblyKeyStatus');
+    try {
+        const res = await fetch('/assembly-key/status');
+        const data = await res.json();
+        statusEl.textContent = data.hasKey
+            ? 'An AssemblyAI API key is saved for this session.'
+            : 'No AssemblyAI API key saved yet. Paste AssemblyAI API key and click "Save Key".';
+    } catch (err) {
+        statusEl.textContent = 'Could not check AssemblyAI API key status.';
     }
 }
 
@@ -100,6 +114,32 @@ async function saveGeminiKey() {
     }
 }
 
+async function saveAssemblyKey() {
+    const input = document.getElementById('assemblyAiApiKey');
+    const assemblyAiApiKey = input.value.trim();
+    if (!assemblyAiApiKey) {
+        setStatus('Paste an AssemblyAI API key first.');
+        return;
+    }
+    try {
+        const res = await fetch('/assembly-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assemblyAiApiKey: assemblyAiApiKey })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Could not save AssemblyAI API key.');
+        }
+        input.value = '';
+        setStatus('AssemblyAI API key saved for this session.');
+        refreshAssemblyKeyStatus();
+    } catch (err) {
+        setStatus('Error: ' + err.message);
+        console.error(err);
+    }
+}
+
 // triggered by the "Clear key" button. Empties the field and tells the server to drop
 // the key from the session (POST /gemini-key/clear), without logging the user out
 async function clearGeminiKey() {
@@ -113,6 +153,17 @@ async function clearGeminiKey() {
     refreshGeminiKeyStatus();
 }
 
+async function clearAssemblyKey() {
+    document.getElementById('assemblyAiApiKey').value = '';
+    try {
+        await fetch('/assembly-key/clear', { method: 'POST' });
+    } catch (err) {
+        console.error('Failed to clear AssemblyAI API key on the server: ', err);
+    }
+    setStatus('AssemblyAI API key cleared.');
+    refreshAssemblyKeyStatus();
+}
+
 // triggered by the "Extract JSON" button
 async function extract() {
     const transcript = document.getElementById('transcript').value.trim();
@@ -122,8 +173,17 @@ async function extract() {
         return;
     }
 
-    setStatus('Calling Gemini...');
+    const formData = new FormData();
+    formData.append('transcript', document.getElementById('transcript').value.trim());
 
+    setStatus('Extracting...');
+
+    // call Gemini to map data to form fields
+    await mapTranscript(formData);
+}
+
+
+async function mapTranscript(formData) {
     // to make sure the standard services list has finished
     if (standardServicesReady) {
         await standardServicesReady;
@@ -134,8 +194,7 @@ async function extract() {
         // Backend controller returns a JSON object response
         const res = await fetch('/extract', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ transcript: transcript })
+            body: formData,
         });
 
         // parse response body as JSON
@@ -166,7 +225,7 @@ async function extract() {
         setStatus('Extraction complete. Review and edit before submitting.');
 
     } catch (err) {
-        setStatus('Error: ' + err.message);
+        setStatus('Error: Try again later');
         console.error(err);
     }
 }
@@ -181,8 +240,7 @@ function parseGeminiResponse(data) {
     const parts = (candidate.content && candidate.content.parts) || [];
     const raw = parts.map(p => p.text || '').join('');
     // log raw text and finish reason to inspect formatting issues
-    console.log('Gemini finishReason:', candidate.finishReason);
-    console.log('Raw Gemini text:', raw);
+
     // strip markdown code fences so the string can be parsed as valid JSON
     const clean = raw.replace(/```json|```/g, '').trim();
     try {
@@ -204,18 +262,56 @@ function showJSON(obj) {
     }
 }
 
-// triggered by the "Submit File" button (still in progress)
-async function extractFromVideo() {
-
+// gets the selceted video and uploads it
+function getVideoFile() {
     const fileInput = document.getElementById("videoInput");
     const file = fileInput.files[0];
 
     if (!file) {
         alert("Please select an mp4 file first.");
-        return;
+        return null;
     }
 
-    setStatus('Extracting data...');
+    return file
+}
+
+async function uploadToAssemblyAI(file) {
+    // fetch AssemblyAI API key 
+    const keyRes = await fetch('/api/assembly-key');
+    const { apiKey } = await keyRes.json();
+
+    if (!keyRes.ok) throw new Error('Failed to fetch API key');
+
+    // upload straight from the browser to AssemblyAI
+    const uploadRes = await fetch('https://api.assemblyai.com/v2/upload', {
+        method: 'POST',
+        headers: {
+            'Authorization': apiKey,
+            'Content-Type': 'application/octet-stream'
+        },
+        body: file
+    });
+
+    const data = await uploadRes.json();
+
+    if (!uploadRes.ok) {
+        throw new Error(data.error || 'AssemblyAI upload failed');
+    }
+
+    // return the temporary URL AssemblyAI generated
+    return data.upload_url;
+}
+
+// triggered by the "Create Transcript" button
+// AssemblyAI creates a trancript. Transcript is placed in a text box for review
+async function createTranscriptFromVideo() {
+    // get the selected video file
+    const file = getVideoFile();
+
+    // if getVideoFile() returned null, stop this function immediately
+    if (!file) return;
+
+    setStatus('Transcribing video...');
 
     // to make sure the standard services list has finished loading 
     if (standardServicesReady) {
@@ -226,7 +322,19 @@ async function extractFromVideo() {
     formData.append("file", file);
 
     try {
-        const res = await fetch("/extract-from-video", {
+        setStatus('Uploading... this may take a few minutes.');
+
+        // upload MP4 file to AssemblyAI
+        const videoUrl = await uploadToAssemblyAI(file);
+
+        setStatus('Transcribing video...');
+
+        // package the new URL string
+        const formData = new FormData();
+        formData.append("videoUrl", videoUrl);
+
+
+        const res = await fetch("/extract", {
             method: "POST",
             body: formData,
         });
@@ -239,29 +347,61 @@ async function extractFromVideo() {
             throw new Error(data.error || 'Request failed.');
         }
 
-        // Check to make sure Gemini returned a candidate result.
-        if (!data.candidates || !data.candidates[0]) {
-            throw new Error('Gemini returned no result. Try again or shorten the transcript.');
-        }
+        // Place tthe returned transcript into the text box for review
+        document.getElementById("transcript").value = data.transcript;
 
-        const raw = data.candidates[0].content.parts[0].text;
-        // log raw text to inspect formatting issues
-        console.log('Raw Gemini text:', raw);
-
-        // strip markdown code so the string can be parsed as valid JSON and trim whitespace
-        const clean = raw.replace(/```json|```/g, '').trim();
-
-        // convert clean string to JS object
-        lastJSON = JSON.parse(clean);
-
-        showJSON(lastJSON);
-        selectProduct(lastJSON);
-        setStatus('Extraction complete. Review the JSON below.');
+        setStatus('Transcript generated successfully! Review the text below.');
     } catch (err) {
-        console.error('Video extraction failed:', err);
+        console.error('Video transcription failed:', err);
         setStatus(err.message || 'Something went wrong.');
     }
 
+}
+
+async function autoFillFromVideo() {
+    // get the selected video file
+    const file = getVideoFile();
+
+    // If getVideoFile() returned null, stop this function immediately
+    if (!file) return;
+
+    try {
+        setStatus('Uploading... this may take a few minutes');
+
+        // upload MP4 file to AssemblyAI
+        const videoUrl = await uploadToAssemblyAI(file);
+
+        setStatus('Video uploaded! Extracting transcript...');
+
+        // package the new URL string
+        const formData = new FormData();
+        formData.append("videoUrl", videoUrl);
+
+        const res = await fetch("/extract", {
+            method: "POST",
+            body: formData,
+        });
+
+        // parse response body as JSON
+        const data = await res.json();
+
+        // if request fails throw to catch block below
+        if (!res.ok) {
+            throw new Error(data.error || 'Request failed.');
+        }
+
+        setStatus('Filling Form...');
+
+        const textFormData = new FormData();
+        textFormData.append('transcript', data.transcript);
+
+        // call Gemini to map data to form fields
+        await mapTranscript(textFormData);
+
+    } catch (err) {
+        console.error('Autofill failed:', err);
+        setStatus(err.message || 'Something went wrong.');
+    }
 }
 
 
@@ -683,15 +823,6 @@ function dateFormat(set_date) {
     return `${day}-${month}-${year}`;
 }
 
-
-// triggered by the "Copy" button
-function copyJSON() {
-    if (!lastJSON) return;
-    navigator.clipboard.writeText(JSON.stringify(lastJSON, null, 2))
-        .then(() => setStatus('Copied to clipboard!'))
-        .catch(() => setStatus('Could not copy.'));
-}
-
 // update status message shown to the user
 function setStatus(msg) {
     document.getElementById('status').textContent = msg;
@@ -712,8 +843,8 @@ async function logout() {
 
 // Submit to Zoho: save current form edits into the JSON first, then send everything
 async function sendJsonToZoho() {
-    if (!lastJSON) {
-        setStatus('Enter the Transcript.');
+    if (!lastJSON || !lastJSON.data) {
+        setZohoStatus('Field extraction failed, resubmit transcript');
         return;
     }
 
@@ -722,17 +853,17 @@ async function sendJsonToZoho() {
 
     const dealId = document.getElementById('dealSelect').value;
     if (!dealId) {
-        setStatus('Select a deal first.');
+        setZohoStatus('Select account and deal id');
+        return;
+    }
+    const missingDeal = getMissingDeal();
+    if (missingDeal.length > 0) {
+        setZohoStatus(`Select a deal for: ` + missingDeal.join(', '));
         return;
     }
 
-    // lastJSON.data.forEach(product => {
-    //     product.Deal_ID = dealId;
-    //     product.Deal_Name = dealId;
-    // })
-
     const payload = { data: lastJSON.data };
-    setZohoStatus('Sending to Zoho...');
+    setZohoStatus('Sending to Product Creator...');
 
     try {
         const res = await fetch('/send-to-service', {
@@ -742,13 +873,26 @@ async function sendJsonToZoho() {
 
         });
         const result = await res.json();
-        setZohoStatus(result.code === 3000 ? 'Message sent successfully' : 'Fail: ' + JSON.stringify(result));
+        setZohoStatus(result.result.map((r, i) => `Product ${i + 1}: ${r.code === 3000 ? 'success' : 'failed'}`).join(', '));
     } catch (err) {
         setZohoStatus('Error: ' + err.message);
     }
-
-
 }
+// Checks for Deal_ID of every product in the JSON. if a product is missing Deal ID it will return the name of the product
+function getMissingDeal() {
+    if (!lastJSON || !lastJSON.data) {
+        return [];
+    }
+    const missingDeal = [];
+    for (let i = 0; i < lastJSON.data.length; i++) {
+        const product = lastJSON.data[i];
+        if (!product.Deal_ID) {
+            missingDeal.push(product.What_is_the_name_of_this_Product || `Product ${i + 1}`);
+        }
+    }
+    return missingDeal;
+}
+
 async function zohoPreview() {
     if (!lastJSON) {
         setStatus('Enter the Transcript.');
@@ -769,17 +913,13 @@ async function zohoPreview() {
     product.Deal_ID = dealId;
     product.Deal_Name = dealId;
 
-    // lastJSON.data.forEach(product => {
-    //     product.Deal_ID = dealId;
-    //     product.Deal_Name = dealId;
-    // })
-
     const payload = { data: lastJSON.data };
     console.log(JSON.stringify(payload, null, 2));
 
-
 }
 
+//Fetches the dealID and name from All Projects of zoho creator
+//Fetches from integration as that had the consistent information about id and name
 async function getProjectNameID() {
     const res = await fetch('/deals');
     const deal = await res.json();
@@ -809,26 +949,9 @@ async function getProjectNameID() {
             lastJSON.data[currentProduct].Deal_Name = event.target.value;
         }
     });
-    // deal.data.forEach(d => {
-    //     if (!d.Deal_ID || !d.Deal_Name || !d.Deal_Name.Account_Name) return;
-    //     if (d.Deal_ID) {
-    //         deals.set(d.Deal_Name.Potential_Name, d.Deal_Name.ID, d.Deal_Name.Account_Name);
-    //     }
-    // });
-
-    // const select = document.getElementById('dealSelect');
-    // select.innerHTML = '<option value="">-- Select -- </option>';
-    // deals.forEach((deal, name, id) => {
-    //     select.innerHTML += `<option value ="${id}">${deal} ${id} ${name}</option>`;
-    // });
-
-    // document.getElementById('dealSelect').addEventListener('change', (event) => {
-    //     const id = document.getElementById('Deal_ID');
-    //     if (id) {
-    //         id.value = event.target.value;
-    //     }
-    // });
 }
 
+// These run when program loads and auto fill the dropdown for Deal name and ID
+// and Standard services in the then section.
 getProjectNameID();
 loadStandardServices();
