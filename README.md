@@ -28,8 +28,8 @@ The project is organized into one main feature decomposed into five subproblems,
 
 | # | Epic | Description | Owner |
 |---|------|-------------|-------|
-| 1 | **API Key Management** | UI for rotating AI API credentials without touching the codebase | Sukh |
-| 2 | **MP4 Upload** | File upload interface accepting MP4 only, with upload confirmation and handoff to the transcription pipeline | Taj |
-| 3 | **Transcription** | AI transcription service integration converting MP4 audio to text; handles 30–60 min recordings and multi-call SOWs | Praise |
-| 4 | **NLP Extraction + Zoho Field Mapping** | AI extraction of SOW fields from the transcript, mapped to Aether's Zoho Creator schema | April |
-| 5 | **Editable Review UI + Zoho Submission** | Editable draft form for reviewing extracted fields before finalizing and pushing the SOW to Zoho Creator | Aaril |
+| 1 | **Login/registration, user roles + prompt retrieval** | User authentication/session handling, plus the Zoho API integration that pulls the extraction prompt from a Zoho Creator report at runtime | Taj |
+| 2 | **Review UI + MP4 transcription** | HTML page for reviewing and editing extracted SOW fields before submission and the MP4-to-text transcription API integration | Praise |
+| 3 | **NLP extraction + Zoho field mapping, per session API key handling** | NLP extraction + Zoho field mapping, per session API key handling – AI extraction of SOW fields from the transcript, mapped to Aether’s Zoho Creator schema using Gemini API. Per-session API key handling (April)  | April |
+| 4 | **Extraction Mapping Logic** | Mapping logic that maps Gemini’s extraction output onto the review form fields and Zoho API integration for the mapped fields | Aaril |
+| 5 | **Zoho Creator API integration** | Integration with Aether’s Zoho Creator API for fetching deal IDs/accounts and submitting completed SOWs to Zoho Creator | Sukh |
