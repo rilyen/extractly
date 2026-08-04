@@ -24,6 +24,9 @@ public class GetZohoDeals {
     @Value("${zoho.allProjects}")
     private String report_link_name;
 
+    @Value("${zoho.configFile}")
+    private String config_file;
+
     // @Value("${zoho.reportLinkName}")
     // private String report_link_name;
 
@@ -33,13 +36,28 @@ public class GetZohoDeals {
 
     public Map<String, Object> getDeals() {
         // Map<String, Object> payload = Map.of("data", extractData);
+        try {
+            Map<String, Object> response = restClient.get()
+                    .uri(base_url + "/creator/v2.1/data/" + account_owner_name + "/" + app_link_name + "/report/"
+                            + report_link_name)
+                    .header("Authorization", "Zoho-oauthtoken " + token.getToken())
+                    .retrieve()
+                    .body(Map.class);
+            return response;
+        } catch (Exception e) {
+            return Map.of("error", "Too many requests to Zoho. Please wait and try again.");
+        }
+    }
 
-        Map<String, Object> response = restClient.get()
+    public Map<String, Object> getGeminiKey() {
+        Map<String, Object> key = restClient.get()
                 .uri(base_url + "/creator/v2.1/data/" + account_owner_name + "/" + app_link_name + "/report/"
-                        + report_link_name)
+                        + config_file)
                 .header("Authorization", "Zoho-oauthtoken " + token.getToken())
                 .retrieve()
                 .body(Map.class);
-        return response;
+        ;
+
+        return key;
     }
 }

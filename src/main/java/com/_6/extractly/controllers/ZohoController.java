@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com._6.extractly.service.AddZohoForm;
 import com._6.extractly.service.GetZohoDeals;
 import com._6.extractly.service.GetZohoStandardServices;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 public class ZohoController {
@@ -38,6 +39,11 @@ public class ZohoController {
     @GetMapping("/standard-services")
     public Map<String, Object> standardServices() {
         return getZohoStandardServices.getStandardServices();
+    }
+
+    @GetMapping("/config-key")
+    public Map<String, Object> geminiKey() {
+        return getZohoDeals.getGeminiKey();
     }
 
 }
