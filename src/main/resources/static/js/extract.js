@@ -47,122 +47,6 @@ async function loadStandardServices() {
 // Ive assigned them (and im using them) as an index and treated them as sigle objects
 let currentProduct = 0;
 
-// On page load, ask server whether a Gemini key is already saved for this session and
-// indicate in the status line. Only returns boolean (not the key)
-document.addEventListener('DOMContentLoaded', () => {
-    refreshGeminiKeyStatus();
-    refreshAssemblyKeyStatus();
-})
-
-async function refreshGeminiKeyStatus() {
-    const statusEl = document.getElementById('geminiKeyStatus');
-    try {
-        const res = await fetch('/gemini-key/status');
-        const data = await res.json();
-        statusEl.textContent = data.hasKey
-            ? 'A Gemini API key is saved for this session.'
-            : 'No Gemini API key saved yet. Paste Gemini API key and click "Save Key".';
-    } catch (err) {
-        statusEl.textContent = 'Could not check Gemini API key status.';
-    }
-}
-
-async function refreshAssemblyKeyStatus() {
-    const statusEl = document.getElementById('assemblyKeyStatus');
-    try {
-        const res = await fetch('/assembly-key/status');
-        const data = await res.json();
-        statusEl.textContent = data.hasKey
-            ? 'An AssemblyAI API key is saved for this session.'
-            : 'No AssemblyAI API key saved yet. Paste AssemblyAI API key and click "Save Key".';
-    } catch (err) {
-        statusEl.textContent = 'Could not check AssemblyAI API key status.';
-    }
-}
-
-// triggered by the "Save Key" button. Sends whatever is in the field to the server (POST /gemini-key),
-// which stores it in this login session. On success, the field is cleared immediately so the plaintext key
-// is no longer present in the page. Only the server session holds it. Paste a different key and click
-// "Save Key" again anytime in the same session to replace it.
-async function saveGeminiKey() {
-    const input = document.getElementById('geminiApiKey');
-    const geminiApiKey = input.value.trim();
-
-    if (!geminiApiKey) {
-        setStatus('Paste a Gemini API key first.');
-        return;
-    }
-
-    try {
-        const res = await fetch('/gemini-key', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ geminiApiKey: geminiApiKey })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-            throw new Error(data.error || 'Could not save Gemini API key.');
-        }
-
-        // Clear the field now that the key is in the session
-        input.value = '';
-        setStatus('Gemini API key saved for this session.');
-        refreshGeminiKeyStatus();
-    } catch (err) {
-        setStatus('Error: ' + err.message);
-        console.error(err);
-    }
-}
-
-async function saveAssemblyKey() {
-    const input = document.getElementById('assemblyAiApiKey');
-    const assemblyAiApiKey = input.value.trim();
-    if (!assemblyAiApiKey) {
-        setStatus('Paste an AssemblyAI API key first.');
-        return;
-    }
-    try {
-        const res = await fetch('/assembly-key', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ assemblyAiApiKey: assemblyAiApiKey })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-            throw new Error(data.error || 'Could not save AssemblyAI API key.');
-        }
-        input.value = '';
-        setStatus('AssemblyAI API key saved for this session.');
-        refreshAssemblyKeyStatus();
-    } catch (err) {
-        setStatus('Error: ' + err.message);
-        console.error(err);
-    }
-}
-
-// triggered by the "Clear key" button. Empties the field and tells the server to drop
-// the key from the session (POST /gemini-key/clear), without logging the user out
-async function clearGeminiKey() {
-    document.getElementById('geminiApiKey').value = '';
-    try {
-        await fetch('/gemini-key/clear', { method: 'POST' });
-    } catch (err) {
-        console.error('Failed to clear Gemini API key on the server: ', err);
-    }
-    setStatus('Gemini API key cleared.');
-    refreshGeminiKeyStatus();
-}
-
-async function clearAssemblyKey() {
-    document.getElementById('assemblyAiApiKey').value = '';
-    try {
-        await fetch('/assembly-key/clear', { method: 'POST' });
-    } catch (err) {
-        console.error('Failed to clear AssemblyAI API key on the server: ', err);
-    }
-    setStatus('AssemblyAI API key cleared.');
-    refreshAssemblyKeyStatus();
-}
 
 // triggered by the "Extract JSON" button
 async function extract() {
@@ -921,37 +805,81 @@ async function zohoPreview() {
 //Fetches the dealID and name from All Projects of zoho creator
 //Fetches from integration as that had the consistent information about id and name
 async function getProjectNameID() {
-    const res = await fetch('/deals');
-    const deal = await res.json();
+    try {
+        const res = await fetch('/deals');
+        const deal = await res.json();
 
-    const deals = new Map();
 
-    deal.data.forEach(d => {
-        if (!d.Integration) return;
-        if (d.Integration.ID) {
-            deals.set(d.Integration.ID, d.Integration.zc_display_value);
-        }
-    });
+        const deals = new Map();
 
-    const select = document.getElementById('dealSelect');
-    select.innerHTML = '<option value="">-- Select -- </option>';
-    deals.forEach((name, id) => {
-        select.innerHTML += `<option value ="${id}">${name} ${id} </option>`;
-    });
+        deal.data.forEach(d => {
+            if (!d.Integration) return;
+            if (d.Integration.ID) {
+                deals.set(d.Integration.ID, d.Integration.zc_display_value);
+            }
+        });
 
-    document.getElementById('dealSelect').addEventListener('change', (event) => {
-        const id = document.getElementById('Deal_ID');
-        if (id) {
-            id.value = event.target.value;
-        }
-        if (lastJSON && lastJSON.data && lastJSON.data[currentProduct]) {
-            lastJSON.data[currentProduct].Deal_ID = event.target.value;
-            lastJSON.data[currentProduct].Deal_Name = event.target.value;
-        }
-    });
+        const select = document.getElementById('dealSelect');
+        select.innerHTML = '<option value="">-- Select -- </option>';
+        deals.forEach((name, id) => {
+            select.innerHTML += `<option value ="${id}">${name} ${id} </option>`;
+        });
+
+        document.getElementById('dealSelect').addEventListener('change', (event) => {
+            const id = document.getElementById('Deal_ID');
+            if (id) {
+                id.value = event.target.value;
+            }
+            if (lastJSON && lastJSON.data && lastJSON.data[currentProduct]) {
+                lastJSON.data[currentProduct].Deal_ID = event.target.value;
+                lastJSON.data[currentProduct].Deal_Name = event.target.value;
+            }
+        });
+    }
+    catch (err) {
+        console.log('Failed to load account and deal id:', err);
+        setStatus('Too many requests to Zoho. Please wait a moment and try again.');
+    }
 }
 
+async function loadApiKeys() {
+    try {
+        const res = await fetch('/config-key');
+        const data = await res.json();
+        const records = (data && data.data) || [];
+
+        let geminiKey = null;
+        let assemblyKey = null;
+
+        records.forEach(record => {
+            if (record.Name === 'Gemini API key') {
+                geminiKey = record.Value;
+            }
+            if (record.Name === 'Assembly AI API') {
+                assemblyKey = record.Value;
+            }
+        });
+
+        if (geminiKey) {
+            await fetch('/gemini-key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ geminiApiKey: geminiKey })
+            });
+        }
+        if (assemblyKey) {
+            await fetch('/assembly-key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ assemblyAiApiKey: assemblyKey })
+            });
+        }
+    } catch (err) {
+        console.log('Could not load API keys from Zoho: ', err);
+    }
+}
 // These run when program loads and auto fill the dropdown for Deal name and ID
 // and Standard services in the then section.
 getProjectNameID();
 loadStandardServices();
+loadApiKeys();

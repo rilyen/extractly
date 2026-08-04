@@ -27,66 +27,7 @@
 
     <main class="mx-3">
 
-      <div class="mb-3">
-        <!--paste your key, click "Save Key" to hand it off to the server session, then the field clears itself -->
-        <!--so the plaintext key is not left visible on screen. Paste a new API key + "Save Key" again anytime to replace it -->
-        <!--"Clear key" removes it from the session -->
-        <div class="card mb-4">
-          <div class="card-body">
-            <label for="geminiApiKey" class="form-label fw-semibold">
-              Gemini API Key <span class="text-danger">(required)</span>
-            </label>
-            <div class="d-flex gap-2 mb-1">
-              <input
-                type="password"
-                id="geminiApiKey"
-                class="form-control"
-                placeholder="Paste your Gemini API key"
-                autocomplete="off"
-              />
-              <button
-                type="button"
-                id="saveGeminiKeyBtn"
-                onclick="saveGeminiKey()"
-                class="btn btn-primary"
-              >
-                Save Key
-              </button>
-              <button
-                type="button"
-                id="clearGeminiKeyBtn"
-                onclick="clearGeminiKey()"
-                class="btn btn-outline-danger"
-                >
-                Clear Key
-              </button>
-            </div>
-            <div id="geminiKeyStatus" class="form-text">Checking key status...</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="mb-3">
-        <div class="card mb-4">
-          <div class="card-body">
-            <label for="assemblyAiApiKey" class="form-label fw-semibold">
-              AssemblyAI API Key <span class="text-danger">(required)</span>
-            </label>
-            <div class="d-flex gap-2 mb-1">
-              <input type="password" id="assemblyAiApiKey" class="form-control"
-                placeholder="Paste your AssemblyAI API key" autocomplete="off" />
-              <button type="button" id="saveAssemblyKeyBtn" onclick="saveAssemblyKey()" class="btn btn-primary">
-                Save Key
-              </button>
-              <button type="button" id="clearAssemblyKeyBtn" onclick="clearAssemblyKey()" class="btn btn-outline-danger">
-                Clear Key
-              </button>
-            </div>
-            <div id="assemblyKeyStatus" class="form-text">Checking key status...</div>
-          </div>
-        </div>
-      </div>
-
+    
       <div class="mb-3">
         <!-- MP4 file input box -->
         <div class="card mb-4">
@@ -147,7 +88,7 @@
       <form id="productForm">
         <!-- Product Details -->
         <h2 class="mb-3">Product Details</h2>
-        <label for="Deal_ID" class="form-label">Account and Deal ID <span class="text-danger">(required)</span></label>
+        <label for="Deal_ID" class="form-label">Account and Deal ID * <span class="text-danger">(required)</span></label>
         <select id="dealSelect" class="form-select"></select>
         <div class="mb-3">
           <label hidden for="Deal_ID" class="form-label">Deal ID</label>
