@@ -62,19 +62,20 @@ public class ExtractController {
 
   // redirect or show page based on user role
   @GetMapping("/")
-  public String index(HttpSession session) {
-    String role = (String) session.getAttribute("role");
+  public String index() {
+    // String role = (String) session.getAttribute("role");
     // Boolean verified = (Boolean) session.getAttribute("verified");
 
-    if (role == null) {
-      return "redirect:/login.html";
-    }
+    // if (role == null) {
+    //   return "redirect:/login.html";
+    // }
     // if (verified == null || !verified) {
     // return "display-view-only";
     // }
 
-    return "ADMIN".equals(role) ? "extract" : "display-view-only"; // CHANGED SOMETHING HERE FOR TESTING display ->
+    // return "ADMIN".equals(role) ? "extract" : "display-view-only"; // CHANGED SOMETHING HERE FOR TESTING display ->
                                                                    // extract
+    return "extract";
   }
 
   // Handles POST /gemini-key

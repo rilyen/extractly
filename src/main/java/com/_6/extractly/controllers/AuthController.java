@@ -1,123 +1,123 @@
-package com._6.extractly.controllers;
+// package com._6.extractly.controllers;
 
-import java.util.Map;
+// import java.util.Map;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+// import org.springframework.http.HttpStatus;
+// import org.springframework.http.ResponseEntity;
+// import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+// import org.springframework.security.crypto.password.PasswordEncoder;
+// import org.springframework.stereotype.Controller;
+// import org.springframework.web.bind.annotation.GetMapping;
+// import org.springframework.web.bind.annotation.PostMapping;
+// import org.springframework.web.bind.annotation.RequestBody;
+// import org.springframework.web.bind.annotation.RequestParam;
+// import org.springframework.web.bind.annotation.ResponseBody;
 
-import com._6.extractly.dto.LoginRequest;
-import com._6.extractly.dto.RegisterRequest;
-import com._6.extractly.models.Role;
-import com._6.extractly.models.User;
-import com._6.extractly.repositories.UserRepository;
-// import com._6.extractly.service.EmailVerificationService;
+// import com._6.extractly.dto.LoginRequest;
+// import com._6.extractly.dto.RegisterRequest;
+// import com._6.extractly.models.Role;
+// import com._6.extractly.models.User;
+// import com._6.extractly.repositories.UserRepository;
+// // import com._6.extractly.service.EmailVerificationService;
 
-import jakarta.servlet.http.HttpSession;
+// import jakarta.servlet.http.HttpSession;
 
-@Controller
-public class AuthController {
+// @Controller
+// public class AuthController {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    // private final EmailVerificationService emailVerificationService;
+//     private final UserRepository userRepository;
+//     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+//     // private final EmailVerificationService emailVerificationService;
 
-    // temporary hardcoded admin domain for authentication
-    private static final String ADMIN_DOMAIN = "@aetherautomation.com";
+//     // temporary hardcoded admin domain for authentication
+//     private static final String ADMIN_DOMAIN = "@aetherautomation.com";
 
-    private static final String EMAIL_REGEX = "^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$";
+//     private static final String EMAIL_REGEX = "^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$";
 
-    public AuthController(UserRepository userRepository) {
-    this.userRepository = userRepository;
-    // this.emailVerificationService = emailVerificationService;
-    }
+//     public AuthController(UserRepository userRepository) {
+//     this.userRepository = userRepository;
+//     // this.emailVerificationService = emailVerificationService;
+//     }
 
-    @PostMapping("/register")
-    @ResponseBody
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
-        if (request.getEmail() == null || request.getEmail().isBlank()) {
-            return error("email", "Email is required.");
-        }
-        if (!request.getEmail().matches(EMAIL_REGEX)) {
-            return error("email", "Email must be valid.");
-        }
-        if (request.getPassword() == null || request.getPassword().isBlank()) {
-            return error("password", "Password is required.");
-        }
-        if (request.getPassword().length() < 8) {
-            return error("password", "Password must be at least 8 characters.");
-        }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            return error("email", "Email already registered.");
-        }
+//     @PostMapping("/register")
+//     @ResponseBody
+//     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+//         if (request.getEmail() == null || request.getEmail().isBlank()) {
+//             return error("email", "Email is required.");
+//         }
+//         if (!request.getEmail().matches(EMAIL_REGEX)) {
+//             return error("email", "Email must be valid.");
+//         }
+//         if (request.getPassword() == null || request.getPassword().isBlank()) {
+//             return error("password", "Password is required.");
+//         }
+//         if (request.getPassword().length() < 8) {
+//             return error("password", "Password must be at least 8 characters.");
+//         }
+//         if (userRepository.existsByEmail(request.getEmail())) {
+//             return error("email", "Email already registered.");
+//         }
 
-        boolean isAdminDomain = request.getEmail().toLowerCase().endsWith(ADMIN_DOMAIN);
-        Role role = isAdminDomain ? Role.ADMIN : Role.USER;
+//         boolean isAdminDomain = request.getEmail().toLowerCase().endsWith(ADMIN_DOMAIN);
+//         Role role = isAdminDomain ? Role.ADMIN : Role.USER;
 
-        String hashedPassword = passwordEncoder.encode(request.getPassword());
-        // String token = java.util.UUID.randomUUID().toString();
+//         String hashedPassword = passwordEncoder.encode(request.getPassword());
+//         // String token = java.util.UUID.randomUUID().toString();
 
-        User user = new User(request.getEmail(), hashedPassword, role);
-        // user.setVerified(false);
-        // user.setVerificationToken(token);
-        userRepository.save(user);
+//         User user = new User(request.getEmail(), hashedPassword, role);
+//         // user.setVerified(false);
+//         // user.setVerificationToken(token);
+//         userRepository.save(user);
 
-        // emailVerificationService.sendVerificationEmail(request.getEmail(), token);
+//         // emailVerificationService.sendVerificationEmail(request.getEmail(), token);
 
-        return ResponseEntity.ok(Map.of("message", "Registration successful."));
-    }
+//         return ResponseEntity.ok(Map.of("message", "Registration successful."));
+//     }
 
-    @PostMapping("/login")
-    @ResponseBody
-    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpSession session) {
-        if (request.getEmail() == null || request.getEmail().isBlank()) {
-            return error("email", "Email is required.");
-        }
-        if (request.getPassword() == null || request.getPassword().isBlank()) {
-            return error("password", "Password is required.");
-        }
+//     @PostMapping("/login")
+//     @ResponseBody
+//     public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpSession session) {
+//         if (request.getEmail() == null || request.getEmail().isBlank()) {
+//             return error("email", "Email is required.");
+//         }
+//         if (request.getPassword() == null || request.getPassword().isBlank()) {
+//             return error("password", "Password is required.");
+//         }
 
-        var userOpt = userRepository.findByEmail(request.getEmail());
+//         var userOpt = userRepository.findByEmail(request.getEmail());
 
-        if (userOpt.isEmpty() || !passwordEncoder.matches(request.getPassword(), userOpt.get().getPassword())) {
-            return error("credentials", "Invalid email or password.");
-        }
+//         if (userOpt.isEmpty() || !passwordEncoder.matches(request.getPassword(), userOpt.get().getPassword())) {
+//             return error("credentials", "Invalid email or password.");
+//         }
 
-        User user = userOpt.get();
-        session.setAttribute("email", user.getEmail());
-        session.setAttribute("role", user.getRole().name());
-        // session.setAttribute("verified", user.isVerified());
+//         User user = userOpt.get();
+//         session.setAttribute("email", user.getEmail());
+//         session.setAttribute("role", user.getRole().name());
+//         // session.setAttribute("verified", user.isVerified());
 
-        return ResponseEntity.ok(Map.of("message", "Login successful."));
-    }
+//         return ResponseEntity.ok(Map.of("message", "Login successful."));
+//     }
 
-    @PostMapping("/logout")
-    @ResponseBody
-    public ResponseEntity<?> logout(HttpSession session) {
-        session.invalidate();
-        return ResponseEntity.ok(Map.of("message", "Logged out."));
-    }
+//     @PostMapping("/logout")
+//     @ResponseBody
+//     public ResponseEntity<?> logout(HttpSession session) {
+//         session.invalidate();
+//         return ResponseEntity.ok(Map.of("message", "Logged out."));
+//     }
 
-    private ResponseEntity<Map<String, String>> error(String field, String message) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(field, message));
-    }
+//     private ResponseEntity<Map<String, String>> error(String field, String message) {
+//         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(field, message));
+//     }
 
-    // @GetMapping("/verify")
-    // public String verify(@RequestParam String token) {
-    //     User user = userRepository.findByVerificationToken(token);
-    //     if (user == null) {
-    //         return "redirect:/verify-failed.html";
-    //     }
-    //     user.setVerified(true);
-    //     user.setVerificationToken(null);
-    //     userRepository.save(user);
-    //     return "redirect:/login.html";
-    // }
-}
+//     // @GetMapping("/verify")
+//     // public String verify(@RequestParam String token) {
+//     //     User user = userRepository.findByVerificationToken(token);
+//     //     if (user == null) {
+//     //         return "redirect:/verify-failed.html";
+//     //     }
+//     //     user.setVerified(true);
+//     //     user.setVerificationToken(null);
+//     //     userRepository.save(user);
+//     //     return "redirect:/login.html";
+//     // }
+// }

@@ -690,15 +690,15 @@ function setZohoStatus(msg) {
     document.getElementById('zohoStatus').textContent = msg;
 }
 // logout
-async function logout() {
-    try {
-        await fetch('/logout', { method: 'POST' });
-        window.location.href = '/login.html';
-    } catch (err) {
-        console.error('Logout failed:', err);
-        setStatus('Logout failed. Try again.');
-    }
-}
+// async function logout() {
+//     try {
+//         await fetch('/logout', { method: 'POST' });
+//         window.location.href = '/login.html';
+//     } catch (err) {
+//         console.error('Logout failed:', err);
+//         setStatus('Logout failed. Try again.');
+//     }
+// }
 
 // Submit to Zoho: save current form edits into the JSON first, then send everything
 async function sendJsonToZoho() {
